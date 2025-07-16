@@ -3,13 +3,14 @@
 Unit tests for Self-Healing Controller
 """
 
-import pytest
-from unittest.mock import MagicMock, patch
 import os
 import sys
 
 # Add parent directory to path for imports
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+import pytest
+from unittest.mock import MagicMock, patch
 
 from self_healing_controller import SelfHealingController
 
