@@ -1,35 +1,35 @@
 # Global owners
-* @your-username
+* @justrunme
 
 # Terraform infrastructure
-/terraform/ @your-username
+/terraform/ @yjustrunme
 
 # Kubernetes manifests
-/kubernetes/ @your-username
+/kubernetes/ @justrunme
 
 # Self-Healing Controller
-/kubernetes/self-healing/ @your-username
+/kubernetes/self-healing/ @justrunme
 
 # Helm charts
-/helm-charts/ @your-username
+/helm-charts/ @justrunme
 
 # Documentation
-/docs/ @your-username
-*.md @your-username
+/docs/ @justrunme
+*.md @justrunme
 
 # CI/CD
-/.github/ @your-username
-.github/workflows/ @your-username
+/.github/ @justrunme
+.github/workflows/ @justrunme
 
 # Scripts
-/scripts/ @your-username
+/scripts/ @justrunme
 
 # Examples
-/examples/ @your-username
+/examples/ @justrunme
 
 # Configuration files
-*.yml @your-username
-*.yaml @your-username
-*.toml @your-username
-*.cfg @your-username
-*.ini @your-username 
+*.yml @justrunme
+*.yaml @justrunme
+*.toml @justrunme
+*.cfg @justrunme
+*.ini @justrunme 
