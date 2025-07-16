@@ -17,10 +17,10 @@ COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
 # Copy application code
-COPY self-healing-controller.py .
+COPY self_healing_controller.py .
 
 # Make script executable
-RUN chmod +x self-healing-controller.py
+RUN chmod +x self_healing_controller.py
 
 # Create non-root user
 RUN useradd -m -u 1000 appuser && chown -R appuser:appuser /app
@@ -34,4 +34,4 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
     CMD curl -f http://localhost:8080/health || exit 1
 
 # Run the application
-CMD ["python", "self-healing-controller.py"] 
+CMD ["python", "self_healing_controller.py"] 
