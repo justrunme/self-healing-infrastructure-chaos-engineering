@@ -172,8 +172,8 @@ jobs:
       - name: Pre-pull Chaos Mesh image
         run: |
           echo "Pre-pulling Chaos Mesh image..."
-          docker pull chaosmesh/chaos-mesh:v2.6.0
-          minikube image load chaosmesh/chaos-mesh:v2.6.0
+          docker pull ghcr.io/chaos-mesh/chaos-mesh:v2.6.0
+          minikube image load ghcr.io/chaos-mesh/chaos-mesh:v2.6.0
           
       - name: Deploy Chaos Mesh
         run: |
