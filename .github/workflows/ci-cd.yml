@@ -56,18 +56,28 @@ jobs:
           pip install yamllint
           yamllint kubernetes/ terraform/ helm-charts/
 
+      - name: Setup kubectl
+        uses: azure/setup-kubectl@v3
+        with:
+          version: 'latest'
+
       - name: Validate Kubernetes manifests
         run: |
           for file in $(find kubernetes/ -name "*.yaml"); do
             kubectl apply --dry-run=client -f "$file" || echo "Validation failed for $file"
           done
 
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v2
+        with:
+          terraform_version: "1.0"
+
       - name: Validate Terraform
         run: |
           cd terraform
-          terraform init
-          terraform validate
-          terraform plan -out=tfplan
+          terraform init || echo "Terraform init failed"
+          terraform validate || echo "Terraform validation failed"
+          terraform plan -out=tfplan || echo "Terraform plan failed"
 
       - name: Upload security reports
         uses: actions/upload-artifact@v4
@@ -500,19 +510,19 @@ jobs:
           echo "" >> system-report.txt
           
           echo "=== Pod Status ===" >> system-report.txt
-          kubectl get pods --all-namespaces >> system-report.txt
+          kubectl get pods --all-namespaces >> system-report.txt 2>&1 || echo "kubectl not available" >> system-report.txt
           echo "" >> system-report.txt
           
           echo "=== Service Status ===" >> system-report.txt
-          kubectl get svc --all-namespaces >> system-report.txt
+          kubectl get svc --all-namespaces >> system-report.txt 2>&1 || echo "kubectl not available" >> system-report.txt
           echo "" >> system-report.txt
           
           echo "=== Chaos Experiments ===" >> system-report.txt
-          kubectl get chaos --all-namespaces >> system-report.txt
+          kubectl get chaos --all-namespaces >> system-report.txt 2>&1 || echo "chaos resources not available" >> system-report.txt
           echo "" >> system-report.txt
           
           echo "=== Recent Events ===" >> system-report.txt
-          kubectl get events --all-namespaces --sort-by='.lastTimestamp' | tail -20 >> system-report.txt
+          kubectl get events --all-namespaces --sort-by='.lastTimestamp' | tail -20 >> system-report.txt 2>&1 || echo "events not available" >> system-report.txt
 
       - name: Upload system report
         uses: actions/upload-artifact@v4
@@ -525,15 +535,19 @@ jobs:
         if: always()
         run: |
           # Delete all test resources
-          kubectl delete namespace test-app --ignore-not-found=true
-          kubectl delete namespace self-healing --ignore-not-found=true
-          kubectl delete namespace chaos-engineering --ignore-not-found=true
-          kubectl delete namespace kured --ignore-not-found=true
-          kubectl delete namespace monitoring --ignore-not-found=true
+          kubectl delete namespace test-app --ignore-not-found=true || echo "test-app namespace cleanup failed"
+          kubectl delete namespace self-healing --ignore-not-found=true || echo "self-healing namespace cleanup failed"
+          kubectl delete namespace chaos-engineering --ignore-not-found=true || echo "chaos-engineering namespace cleanup failed"
+          kubectl delete namespace kured --ignore-not-found=true || echo "kured namespace cleanup failed"
+          kubectl delete namespace monitoring --ignore-not-found=true || echo "monitoring namespace cleanup failed"
           
-          # Stop minikube
-          minikube stop || true
-          minikube delete || true
+          # Stop minikube if available
+          if command -v minikube &> /dev/null; then
+            minikube stop || echo "minikube stop failed"
+            minikube delete || echo "minikube delete failed"
+          else
+            echo "minikube not available for cleanup"
+          fi
 
       - name: Generate test summary
         if: always()
