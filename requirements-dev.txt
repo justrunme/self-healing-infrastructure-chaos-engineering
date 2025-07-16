@@ -11,7 +11,7 @@ isort==5.12.0
 yamllint==1.33.0
 
 # Security scanning
-bandit==1.7.5
+bandit==1.8.6
 safety==2.3.5
 
 # Type checking
