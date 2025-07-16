@@ -1,0 +1,99 @@
+# GitHub repository settings
+repository:
+  # General settings
+  name: self-healing-infrastructure-chaos-engineering
+  description: "Self-Healing Infrastructure with Chaos Engineering for Kubernetes"
+  homepage: "https://github.com/your-username/self-healing-infrastructure-chaos-engineering"
+  topics: "kubernetes,chaos-engineering,self-healing,prometheus,terraform,helm,devops,sre"
+  private: false
+  has_issues: true
+  has_projects: true
+  has_wiki: false
+  has_downloads: true
+  default_branch: "main"
+  allow_squash_merge: true
+  allow_merge_commit: true
+  allow_rebase_merge: true
+  delete_branch_on_merge: true
+
+  # Security settings
+  vulnerability_alerts: true
+  secret_scanning: true
+  secret_scanning_push_protection: true
+
+branches:
+  - name: main
+    protection:
+      required_status_checks:
+        strict: true
+        contexts:
+          - "Code Quality & Security"
+          - "Build & Test Controller"
+          - "Infrastructure Testing"
+          - "Chaos Engineering Tests"
+          - "Dashboard & Monitoring Tests"
+          - "Integration Tests"
+          - "Performance & Load Tests"
+      enforce_admins: false
+      required_pull_request_reviews:
+        required_approving_review_count: 2
+        dismiss_stale_reviews: true
+        require_code_owner_reviews: true
+      restrictions: null
+
+  - name: develop
+    protection:
+      required_status_checks:
+        strict: true
+        contexts:
+          - "Code Quality & Security"
+          - "Build & Test Controller"
+      enforce_admins: false
+      required_pull_request_reviews:
+        required_approving_review_count: 1
+        dismiss_stale_reviews: true
+      restrictions: null
+
+labels:
+  - name: "bug"
+    color: "d73a4a"
+    description: "Something isn't working"
+  - name: "enhancement"
+    color: "a2eeef"
+    description: "New feature or request"
+  - name: "documentation"
+    color: "0075ca"
+    description: "Improvements or additions to documentation"
+  - name: "good first issue"
+    color: "7057ff"
+    description: "Good for newcomers"
+  - name: "help wanted"
+    color: "008672"
+    description: "Extra attention is needed"
+  - name: "priority: high"
+    color: "ff0000"
+    description: "High priority issue"
+  - name: "priority: medium"
+    color: "ffa500"
+    description: "Medium priority issue"
+  - name: "priority: low"
+    color: "00ff00"
+    description: "Low priority issue"
+  - name: "chaos-engineering"
+    color: "ff6b6b"
+    description: "Related to chaos engineering"
+  - name: "self-healing"
+    color: "4caf50"
+    description: "Related to self-healing functionality"
+  - name: "monitoring"
+    color: "2196f3"
+    description: "Related to monitoring and alerting"
+  - name: "terraform"
+    color: "7b42bc"
+    description: "Related to Terraform infrastructure"
+  - name: "helm"
+    color: "0f1689"
+    description: "Related to Helm charts"
+  - name: "needs-triage"
+    color: "ffd700"
+    description: "Issue needs to be triaged" 

@@ -1,0 +1,19 @@
+[flake8]
+max-line-length = 120
+ignore = E501, W503, E203, W291, W292, W293, E722, E731, E741, E402, E731
+exclude = 
+    .git,
+    __pycache__,
+    .venv,
+    venv,
+    env,
+    .env,
+    build,
+    dist,
+    *.egg-info,
+    .pytest_cache,
+    .coverage,
+    htmlcov
+per-file-ignores =
+    __init__.py:F401
+    tests/*:E501 

@@ -1,0 +1,147 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: prometheus-config
+  namespace: monitoring
+data:
+  prometheus.yml: |
+    global:
+      scrape_interval: 15s
+      evaluation_interval: 15s
+
+    rule_files:
+      - /etc/prometheus/rules/*.yml
+
+    alerting:
+      alertmanagers:
+        - static_configs:
+            - targets:
+              - alertmanager:9093
+
+    scrape_configs:
+      - job_name: 'kubernetes-pods'
+        kubernetes_sd_configs:
+          - role: pod
+        relabel_configs:
+          - source_labels: [__meta_kubernetes_pod_annotation_prometheus_io_scrape]
+            action: keep
+            regex: true
+          - source_labels: [__meta_kubernetes_pod_annotation_prometheus_io_path]
+            action: replace
+            target_label: __metrics_path__
+            regex: (.+)
+          - source_labels: [__address__, __meta_kubernetes_pod_annotation_prometheus_io_port]
+            action: replace
+            regex: ([^:]+)(?::\d+)?;(\d+)
+            replacement: $1:$2
+            target_label: __address__
+          - action: labelmap
+            regex: __meta_kubernetes_pod_label_(.+)
+          - source_labels: [__meta_kubernetes_namespace]
+            action: replace
+            target_label: kubernetes_namespace
+          - source_labels: [__meta_kubernetes_pod_name]
+            action: replace
+            target_label: kubernetes_pod_name
+
+      - job_name: 'kubernetes-nodes'
+        kubernetes_sd_configs:
+          - role: node
+        relabel_configs:
+          - action: labelmap
+            regex: __meta_kubernetes_node_label_(.+)
+
+      - job_name: 'self-healing-controller'
+        static_configs:
+          - targets: ['self-healing-controller.self-healing.svc.cluster.local:8080']
+
+      - job_name: 'chaos-mesh'
+        static_configs:
+          - targets: ['chaos-mesh-controller-manager.chaos-engineering.svc.cluster.local:10080']
+
+  rules.yml: |
+    groups:
+      - name: self-healing.rules
+        rules:
+          # Pod failure detection
+          - alert: PodCrashLooping
+            expr: rate(kube_pod_container_status_restarts_total[15m]) * 60 > 0
+            for: 5m
+            labels:
+              severity: warning
+              component: self-healing
+            annotations:
+              summary: "Pod {{ $labels.pod }} is crash looping"
+              description: "Pod {{ $labels.pod }} in namespace {{ $labels.namespace }} is restarting {{ printf \"%.2f\" $value }} times / 5 minutes."
+
+          - alert: PodNotReady
+            expr: kube_pod_status_phase{phase=~"Pending|Unknown"} > 0
+            for: 10m
+            labels:
+              severity: warning
+              component: self-healing
+            annotations:
+              summary: "Pod {{ $labels.pod }} is not ready"
+              description: "Pod {{ $labels.pod }} in namespace {{ $labels.namespace }} has been in {{ $labels.phase }} state for more than 10 minutes."
+
+          # Node failure detection
+          - alert: NodeNotReady
+            expr: kube_node_status_condition{condition="Ready",status="true"} == 0
+            for: 5m
+            labels:
+              severity: critical
+              component: self-healing
+            annotations:
+              summary: "Node {{ $labels.node }} is not ready"
+              description: "Node {{ $labels.node }} has been not ready for more than 5 minutes."
+
+          - alert: NodeDiskPressure
+            expr: kube_node_status_condition{condition="DiskPressure",status="true"} == 1
+            for: 5m
+            labels:
+              severity: warning
+              component: self-healing
+            annotations:
+              summary: "Node {{ $labels.node }} has disk pressure"
+              description: "Node {{ $labels.node }} is experiencing disk pressure."
+
+          - alert: NodeMemoryPressure
+            expr: kube_node_status_condition{condition="MemoryPressure",status="true"} == 1
+            for: 5m
+            labels:
+              severity: warning
+              component: self-healing
+            annotations:
+              summary: "Node {{ $labels.node }} has memory pressure"
+              description: "Node {{ $labels.node }} is experiencing memory pressure."
+
+          # Self-healing controller health
+          - alert: SelfHealingControllerDown
+            expr: up{job="self-healing-controller"} == 0
+            for: 1m
+            labels:
+              severity: critical
+              component: self-healing
+            annotations:
+              summary: "Self-healing controller is down"
+              description: "Self-healing controller has been down for more than 1 minute."
+
+          # Chaos engineering alerts
+          - alert: ChaosExperimentRunning
+            expr: chaos_experiment_status{phase="Running"} > 0
+            labels:
+              severity: info
+              component: chaos-engineering
+            annotations:
+              summary: "Chaos experiment {{ $labels.name }} is running"
+              description: "Chaos experiment {{ $labels.name }} in namespace {{ $labels.namespace }} is currently running."
+
+          - alert: ChaosExperimentFailed
+            expr: chaos_experiment_status{phase="Failed"} > 0
+            for: 1m
+            labels:
+              severity: warning
+              component: chaos-engineering
+            annotations:
+              summary: "Chaos experiment {{ $labels.name }} failed"
+              description: "Chaos experiment {{ $labels.name }} in namespace {{ $labels.namespace }} has failed." 

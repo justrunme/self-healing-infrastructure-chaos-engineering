@@ -1,0 +1,103 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: alertmanager-config
+  namespace: monitoring
+data:
+  alertmanager.yml: |
+    global:
+      resolve_timeout: 5m
+      slack_api_url: '{{ .Values.slack_webhook_url }}'
+
+    route:
+      group_by: ['alertname', 'cluster', 'service']
+      group_wait: 10s
+      group_interval: 10s
+      repeat_interval: 1h
+      receiver: 'slack-notifications'
+      routes:
+        - match:
+            severity: critical
+          receiver: 'slack-critical'
+          continue: true
+        - match:
+            component: self-healing
+          receiver: 'slack-self-healing'
+          continue: true
+        - match:
+            component: chaos-engineering
+          receiver: 'slack-chaos'
+          continue: true
+
+    receivers:
+      - name: 'slack-notifications'
+        slack_configs:
+          - channel: '#alerts'
+            title: '{{ template "slack.title" . }}'
+            text: '{{ template "slack.text" . }}'
+            send_resolved: true
+            actions:
+              - type: button
+                text: 'View in Prometheus'
+                url: '{{ template "slack.prometheusURL" . }}'
+
+      - name: 'slack-critical'
+        slack_configs:
+          - channel: '#critical-alerts'
+            title: '🚨 CRITICAL: {{ template "slack.title" . }}'
+            text: '{{ template "slack.text" . }}'
+            send_resolved: true
+            color: 'danger'
+            actions:
+              - type: button
+                text: 'View in Prometheus'
+                url: '{{ template "slack.prometheusURL" . }}'
+
+      - name: 'slack-self-healing'
+        slack_configs:
+          - channel: '#self-healing'
+            title: '🔧 Self-Healing: {{ template "slack.title" . }}'
+            text: '{{ template "slack.text" . }}'
+            send_resolved: true
+            color: 'warning'
+            actions:
+              - type: button
+                text: 'View in Prometheus'
+                url: '{{ template "slack.prometheusURL" . }}'
+
+      - name: 'slack-chaos'
+        slack_configs:
+          - channel: '#chaos-engineering'
+            title: '🧪 Chaos: {{ template "slack.title" . }}'
+            text: '{{ template "slack.text" . }}'
+            send_resolved: true
+            color: 'good'
+            actions:
+              - type: button
+                text: 'View in Prometheus'
+                url: '{{ template "slack.prometheusURL" . }}'
+
+    templates:
+      - '/etc/alertmanager/template/*.tmpl'
+
+  slack.tmpl: |
+    {{ define "slack.title" }}
+    [{{ .Status | toUpper }}{{ if eq .Status "firing" }}:{{ .Alerts.Firing | len }}{{ end }}] {{ .CommonLabels.alertname }}
+    {{ end }}
+
+    {{ define "slack.text" }}
+    {{ range .Alerts }}
+    *Alert:* {{ .Annotations.summary }}
+    *Description:* {{ .Annotations.description }}
+    *Severity:* {{ .Labels.severity }}
+    *Component:* {{ .Labels.component }}
+    *Namespace:* {{ .Labels.kubernetes_namespace }}
+    *Pod:* {{ .Labels.kubernetes_pod_name }}
+    *Node:* {{ .Labels.node }}
+    *Started:* {{ .StartsAt | since }}
+    {{ end }}
+    {{ end }}
+
+    {{ define "slack.prometheusURL" }}
+    http://prometheus-service.monitoring.svc.cluster.local:9090/graph?g0.expr={{ .CommonLabels.alertname }}
+    {{ end }} 

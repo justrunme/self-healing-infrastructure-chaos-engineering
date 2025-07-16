@@ -1,0 +1,85 @@
+# Default values for self-healing-controller
+replicaCount: 1
+
+image:
+  repository: self-healing-controller
+  pullPolicy: IfNotPresent
+  tag: "latest"
+
+imagePullSecrets: []
+nameOverride: ""
+fullnameOverride: ""
+
+serviceAccount:
+  create: true
+  annotations: {}
+  name: ""
+
+podAnnotations: {}
+
+podSecurityContext: {}
+
+securityContext: {}
+
+service:
+  type: ClusterIP
+  port: 8080
+
+resources:
+  limits:
+    cpu: 500m
+    memory: 512Mi
+  requests:
+    cpu: 250m
+    memory: 256Mi
+
+autoscaling:
+  enabled: false
+  minReplicas: 1
+  maxReplicas: 100
+  targetCPUUtilizationPercentage: 80
+
+nodeSelector: {}
+
+tolerations: []
+
+affinity: {}
+
+# Self-healing configuration
+config:
+  # Pod failure detection
+  podFailureThreshold: 3
+  podRestartTimeout: 300
+  
+  # Node failure detection
+  nodeFailureThreshold: 2
+  nodeUnreachableTimeout: 600
+  
+  # Helm rollback configuration
+  helmRollbackEnabled: true
+  helmRollbackTimeout: 300
+  
+  # Kured integration
+  kuredIntegrationEnabled: true
+  
+  # Slack notifications
+  slackNotificationsEnabled: true
+  slackWebhookUrl: ""
+  slackChannel: "#alerts"
+  
+  # Prometheus integration
+  prometheusEnabled: true
+  prometheusUrl: "http://prometheus-service.monitoring.svc.cluster.local:9090"
+  
+  # Chaos engineering integration
+  chaosEngineeringEnabled: true
+  chaosMeshUrl: "http://chaos-mesh-controller-manager.chaos-engineering.svc.cluster.local:10080"
+
+# Monitoring configuration
+monitoring:
+  enabled: true
+  serviceMonitor:
+    enabled: true
+    interval: 30s
+  prometheusRule:
+    enabled: true 

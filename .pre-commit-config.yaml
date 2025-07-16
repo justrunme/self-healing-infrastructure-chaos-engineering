@@ -1,0 +1,79 @@
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.5.0
+    hooks:
+      - id: trailing-whitespace
+      - id: end-of-file-fixer
+      - id: check-yaml
+      - id: check-added-large-files
+      - id: check-merge-conflict
+      - id: check-case-conflict
+      - id: check-docstring-first
+      - id: check-json
+      - id: check-merge-conflict
+      - id: debug-statements
+
+  - repo: https://github.com/psf/black
+    rev: 23.11.0
+    hooks:
+      - id: black
+        language_version: python3.9
+
+  - repo: https://github.com/pycqa/isort
+    rev: 5.12.0
+    hooks:
+      - id: isort
+        args: ["--profile", "black"]
+
+  - repo: https://github.com/pycqa/flake8
+    rev: 6.1.0
+    hooks:
+      - id: flake8
+        args: [--max-line-length=120]
+
+  - repo: https://github.com/pycqa/bandit
+    rev: 1.7.5
+    hooks:
+      - id: bandit
+        args: [-r, kubernetes/self-healing/]
+
+  - repo: https://github.com/adrienverge/yamllint
+    rev: v1.33.0
+    hooks:
+      - id: yamllint
+        args: [--config-file, .yamllint]
+
+  - repo: https://github.com/pre-commit/mirrors-mypy
+    rev: v1.7.1
+    hooks:
+      - id: mypy
+        additional_dependencies: [types-requests]
+        args: [--ignore-missing-imports]
+
+  - repo: local
+    hooks:
+      - id: terraform-validate
+        name: terraform validate
+        entry: terraform validate
+        language: system
+        files: \.tf$
+        pass_filenames: false
+        always_run: true
+        working_dir: terraform/
+
+      - id: terraform-fmt
+        name: terraform fmt
+        entry: terraform fmt -check
+        language: system
+        files: \.tf$
+        pass_filenames: false
+        always_run: true
+        working_dir: terraform/
+
+      - id: helm-lint
+        name: helm lint
+        entry: helm lint
+        language: system
+        files: helm-charts/
+        pass_filenames: false
+        always_run: true 

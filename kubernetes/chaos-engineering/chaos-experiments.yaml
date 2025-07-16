@@ -1,0 +1,106 @@
+# Pod Failure Chaos Experiment
+apiVersion: chaos-mesh.org/v1alpha1
+kind: PodChaos
+metadata:
+  name: pod-failure-test
+  namespace: test-app
+spec:
+  action: pod-failure
+  mode: one
+  selector:
+    namespaces:
+      - test-app
+    labelSelectors:
+      app: test-app
+  duration: "30s"
+  scheduler:
+    cron: "@every 5m"
+
+---
+# Network Chaos Experiment
+apiVersion: chaos-mesh.org/v1alpha1
+kind: NetworkChaos
+metadata:
+  name: network-delay-test
+  namespace: test-app
+spec:
+  action: delay
+  mode: one
+  selector:
+    namespaces:
+      - test-app
+    labelSelectors:
+      app: test-app
+  delay:
+    latency: "100ms"
+    correlation: "100"
+    jitter: "0ms"
+  duration: "1m"
+  scheduler:
+    cron: "@every 10m"
+
+---
+# CPU Stress Chaos Experiment
+apiVersion: chaos-mesh.org/v1alpha1
+kind: StressChaos
+metadata:
+  name: cpu-stress-test
+  namespace: test-app
+spec:
+  mode: one
+  selector:
+    namespaces:
+      - test-app
+    labelSelectors:
+      app: test-app
+  stressors:
+    cpu:
+      workers: 1
+      load: 50
+      options: ["cpu-cores"]
+  duration: "2m"
+  scheduler:
+    cron: "@every 15m"
+
+---
+# Memory Stress Chaos Experiment
+apiVersion: chaos-mesh.org/v1alpha1
+kind: StressChaos
+metadata:
+  name: memory-stress-test
+  namespace: test-app
+spec:
+  mode: one
+  selector:
+    namespaces:
+      - test-app
+    labelSelectors:
+      app: test-app
+  stressors:
+    memory:
+      workers: 1
+      size: "256MB"
+  duration: "1m"
+  scheduler:
+    cron: "@every 20m"
+
+---
+# Container Kill Chaos Experiment
+apiVersion: chaos-mesh.org/v1alpha1
+kind: PodChaos
+metadata:
+  name: container-kill-test
+  namespace: test-app
+spec:
+  action: container-kill
+  mode: one
+  selector:
+    namespaces:
+      - test-app
+    labelSelectors:
+      app: test-app
+  containerNames:
+    - test-app
+  duration: "10s"
+  scheduler:
+    cron: "@every 8m" 

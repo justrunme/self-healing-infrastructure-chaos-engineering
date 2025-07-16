@@ -1,0 +1,15 @@
+extends: default
+
+rules:
+  line-length:
+    max: 120
+    level: warning
+  document-start: disable
+  trailing-spaces: enable
+  truthy:
+    check-keys: false
+  comments-indentation: disable
+  key-duplicates: enable
+  empty-lines:
+    max: 1
+    max-end: 1 

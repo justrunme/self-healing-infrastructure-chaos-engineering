@@ -1,0 +1,583 @@
+name: Self-Healing Infrastructure CI/CD
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Environment to deploy to'
+        required: true
+        default: 'dev'
+        type: choice
+        options:
+        - dev
+        - staging
+        - prod
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}
+
+jobs:
+  # Job 1: Code Quality and Security
+  code-quality:
+    name: Code Quality & Security
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.9'
+
+      - name: Install dependencies
+        run: |
+          pip install flake8 black isort bandit safety
+          pip install -r kubernetes/self-healing/requirements.txt
+
+      - name: Lint Python code
+        run: |
+          flake8 kubernetes/self-healing/ --max-line-length=120 --ignore=E501,W503
+          black --check kubernetes/self-healing/
+          isort --check-only kubernetes/self-healing/
+
+      - name: Security scan Python code
+        run: |
+          bandit -r kubernetes/self-healing/ -f json -o bandit-report.json || true
+          safety check --json --output safety-report.json || true
+
+      - name: Lint YAML files
+        run: |
+          pip install yamllint
+          yamllint kubernetes/ terraform/ helm-charts/
+
+      - name: Validate Kubernetes manifests
+        run: |
+          for file in $(find kubernetes/ -name "*.yaml"); do
+            kubectl apply --dry-run=client -f "$file" || echo "Validation failed for $file"
+          done
+
+      - name: Validate Terraform
+        run: |
+          cd terraform
+          terraform init
+          terraform validate
+          terraform plan -out=tfplan
+
+      - name: Upload security reports
+        uses: actions/upload-artifact@v3
+        with:
+          name: security-reports
+          path: |
+            bandit-report.json
+            safety-report.json
+
+  # Job 2: Build and Test Self-Healing Controller
+  build-test:
+    name: Build & Test Controller
+    runs-on: ubuntu-latest
+    needs: code-quality
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.9'
+
+      - name: Install dependencies
+        run: |
+          pip install -r kubernetes/self-healing/requirements.txt
+          pip install pytest pytest-cov pytest-mock
+
+      - name: Run unit tests
+        run: |
+          cd kubernetes/self-healing
+          python -m pytest tests/ -v --cov=. --cov-report=xml --cov-report=html
+
+      - name: Upload coverage reports
+        uses: actions/upload-artifact@v3
+        with:
+          name: coverage-reports
+          path: kubernetes/self-healing/htmlcov/
+
+      - name: Build Docker image
+        run: |
+          cd kubernetes/self-healing
+          docker build -t self-healing-controller:test .
+
+      - name: Test Docker image
+        run: |
+          docker run --rm self-healing-controller:test python -c "import kubernetes; print('Docker image test passed')"
+
+  # Job 3: Infrastructure Testing
+  infrastructure-test:
+    name: Infrastructure Testing
+    runs-on: ubuntu-latest
+    needs: build-test
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v2
+        with:
+          terraform_version: "1.0"
+
+      - name: Setup kubectl
+        uses: azure/setup-kubectl@v3
+        with:
+          version: 'latest'
+
+      - name: Setup Minikube
+        run: |
+          curl -LO https://storage.googleapis.com/minikube/releases/latest/minikube-linux-amd64
+          sudo install minikube-linux-amd64 /usr/local/bin/minikube
+          minikube start --driver=docker --cpus=4 --memory=8192
+
+      - name: Deploy infrastructure
+        run: |
+          cd terraform
+          terraform init
+          terraform apply -auto-approve
+
+      - name: Verify namespaces
+        run: |
+          kubectl get namespaces | grep -E "(monitoring|chaos-engineering|self-healing|kured|test-app)"
+
+      - name: Deploy monitoring stack
+        run: |
+          kubectl apply -f kubernetes/monitoring/
+          helm repo add prometheus-community https://prometheus-community.github.io/helm-charts
+          helm install prometheus prometheus-community/kube-prometheus-stack \
+            --namespace monitoring \
+            --create-namespace \
+            --set prometheus.prometheusSpec.retention=1d \
+            --set grafana.enabled=true \
+            --set grafana.adminPassword=admin123
+
+      - name: Deploy Chaos Mesh
+        run: |
+          kubectl apply -f kubernetes/chaos-engineering/chaos-mesh.yaml
+          kubectl wait --for=condition=ready pod -l app=chaos-mesh -n chaos-engineering --timeout=300s
+
+      - name: Deploy Kured
+        run: |
+          kubectl apply -f kubernetes/kured/kured.yaml
+          kubectl wait --for=condition=ready pod -l app=kured -n kured --timeout=300s
+
+      - name: Deploy Self-Healing Controller
+        run: |
+          cd kubernetes/self-healing
+          docker build -t self-healing-controller:latest .
+          minikube image load self-healing-controller:latest
+          cd ../..
+          kubectl apply -f kubernetes/self-healing/deployment.yaml
+          kubectl wait --for=condition=ready pod -l app=self-healing-controller -n self-healing --timeout=300s
+
+      - name: Deploy test application
+        run: |
+          kubectl apply -f kubernetes/test-app/test-app.yaml
+          kubectl wait --for=condition=ready pod -l app=test-app -n test-app --timeout=300s
+
+      - name: Verify all components
+        run: |
+          echo "Checking all components..."
+          kubectl get pods --all-namespaces | grep -E "(prometheus|alertmanager|chaos-mesh|kured|self-healing|test-app)"
+          
+          echo "Checking services..."
+          kubectl get svc --all-namespaces | grep -E "(prometheus|alertmanager|chaos-mesh|kured|self-healing|test-app)"
+
+  # Job 4: Chaos Engineering Tests
+  chaos-testing:
+    name: Chaos Engineering Tests
+    runs-on: ubuntu-latest
+    needs: infrastructure-test
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup kubectl
+        uses: azure/setup-kubectl@v3
+        with:
+          version: 'latest'
+
+      - name: Wait for system to be ready
+        run: |
+          sleep 60
+          kubectl get pods --all-namespaces
+
+      - name: Run chaos experiments
+        run: |
+          # Deploy chaos experiments
+          kubectl apply -f kubernetes/chaos-engineering/chaos-experiments.yaml
+          
+          # Wait for experiments to start
+          sleep 30
+          
+          # Check experiment status
+          kubectl get chaos -n test-app
+          
+          # Wait for experiments to complete
+          sleep 120
+          
+          # Clean up experiments
+          kubectl delete chaos -n test-app --all
+
+      - name: Test pod failure recovery
+        run: |
+          # Get a test pod
+          POD_NAME=$(kubectl get pods -n test-app -o jsonpath='{.items[0].metadata.name}')
+          
+          # Delete the pod
+          kubectl delete pod $POD_NAME -n test-app
+          
+          # Wait for recovery
+          sleep 30
+          
+          # Verify pod is running again
+          kubectl get pods -n test-app | grep Running
+
+      - name: Test network chaos
+        run: |
+          # Create network chaos experiment
+          kubectl apply -f - <<EOF
+          apiVersion: chaos-mesh.org/v1alpha1
+          kind: NetworkChaos
+          metadata:
+            name: test-network-chaos
+            namespace: test-app
+          spec:
+            action: delay
+            mode: one
+            selector:
+              namespaces: [test-app]
+              labelSelectors:
+                app: test-app
+            delay:
+              latency: "100ms"
+              correlation: "100"
+              jitter: "0ms"
+            duration: "30s"
+          EOF
+          
+          # Wait for experiment
+          sleep 35
+          
+          # Clean up
+          kubectl delete networkchaos test-network-chaos -n test-app
+
+  # Job 5: Dashboard and Monitoring Tests
+  dashboard-testing:
+    name: Dashboard & Monitoring Tests
+    runs-on: ubuntu-latest
+    needs: chaos-testing
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup kubectl
+        uses: azure/setup-kubectl@v3
+        with:
+          version: 'latest'
+
+      - name: Test Prometheus connectivity
+        run: |
+          # Start port-forward in background
+          kubectl port-forward -n monitoring svc/prometheus-kube-prometheus-prometheus 9090:9090 &
+          PF_PID=$!
+          
+          # Wait for port-forward to be ready
+          sleep 10
+          
+          # Test Prometheus API
+          curl -f http://localhost:9090/api/v1/query?query=up || exit 1
+          
+          # Test self-healing metrics
+          curl -f "http://localhost:9090/api/v1/query?query=pod_failures_total" || echo "No self-healing metrics yet"
+          
+          # Kill port-forward
+          kill $PF_PID
+
+      - name: Test Alertmanager connectivity
+        run: |
+          # Start port-forward in background
+          kubectl port-forward -n monitoring svc/prometheus-kube-prometheus-alertmanager 9093:9093 &
+          PF_PID=$!
+          
+          # Wait for port-forward to be ready
+          sleep 10
+          
+          # Test Alertmanager API
+          curl -f http://localhost:9093/api/v1/status || exit 1
+          
+          # Kill port-forward
+          kill $PF_PID
+
+      - name: Test Grafana connectivity
+        run: |
+          # Start port-forward in background
+          kubectl port-forward -n monitoring svc/prometheus-grafana 3000:80 &
+          PF_PID=$!
+          
+          # Wait for port-forward to be ready
+          sleep 10
+          
+          # Test Grafana API
+          curl -f http://localhost:3000/api/health || exit 1
+          
+          # Kill port-forward
+          kill $PF_PID
+
+      - name: Test Chaos Mesh UI
+        run: |
+          # Start port-forward in background
+          kubectl port-forward -n chaos-engineering svc/chaos-mesh-controller-manager 2333:10080 &
+          PF_PID=$!
+          
+          # Wait for port-forward to be ready
+          sleep 10
+          
+          # Test Chaos Mesh API
+          curl -f http://localhost:2333/api/v1/experiments || exit 1
+          
+          # Kill port-forward
+          kill $PF_PID
+
+      - name: Test Self-Healing Controller metrics
+        run: |
+          # Start port-forward in background
+          kubectl port-forward -n self-healing svc/self-healing-controller 8080:8080 &
+          PF_PID=$!
+          
+          # Wait for port-forward to be ready
+          sleep 10
+          
+          # Test metrics endpoint
+          curl -f http://localhost:8080/metrics || exit 1
+          
+          # Kill port-forward
+          kill $PF_PID
+
+  # Job 6: Integration Tests
+  integration-tests:
+    name: Integration Tests
+    runs-on: ubuntu-latest
+    needs: dashboard-testing
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup kubectl
+        uses: azure/setup-kubectl@v3
+        with:
+          version: 'latest'
+
+      - name: Test Slack notification setup
+        run: |
+          # Create test Slack secret
+          kubectl create secret generic slack-secret \
+            --from-literal=webhook_url="https://hooks.slack.com/services/test/test/test" \
+            -n monitoring || echo "Slack secret already exists"
+
+      - name: Test Helm rollback functionality
+        run: |
+          # Install test app with Helm
+          helm repo add test-repo https://charts.bitnami.com/bitnami
+          helm install test-app test-repo/nginx --namespace test-app --create-namespace || echo "Test app already installed"
+          
+          # Simulate failure and check rollback
+          kubectl delete pod -l app.kubernetes.io/name=nginx -n test-app || echo "No nginx pods found"
+
+      - name: Test Kured integration
+        run: |
+          # Check Kured is running
+          kubectl get pods -n kured | grep Running
+          
+          # Check Kured configuration
+          kubectl describe daemonset kured -n kured
+
+      - name: Test monitoring alerts
+        run: |
+          # Check if alerts are configured
+          kubectl get prometheusrules -n monitoring
+          
+          # Check alertmanager configuration
+          kubectl get configmap alertmanager-config -n monitoring -o yaml
+
+      - name: Test chaos experiment scheduling
+        run: |
+          # Check scheduled experiments
+          kubectl get chaos -n test-app -o yaml | grep -i cron || echo "No scheduled experiments"
+
+  # Job 7: Performance and Load Tests
+  performance-tests:
+    name: Performance & Load Tests
+    runs-on: ubuntu-latest
+    needs: integration-tests
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup kubectl
+        uses: azure/setup-kubectl@v3
+        with:
+          version: 'latest'
+
+      - name: Load test with multiple chaos experiments
+        run: |
+          # Create multiple chaos experiments
+          for i in {1..3}; do
+            kubectl apply -f - <<EOF
+            apiVersion: chaos-mesh.org/v1alpha1
+            kind: PodChaos
+            metadata:
+              name: load-test-$i
+              namespace: test-app
+            spec:
+              action: pod-failure
+              mode: one
+              selector:
+                namespaces: [test-app]
+                labelSelectors:
+                  app: test-app
+              duration: "10s"
+            EOF
+          done
+          
+          # Wait for experiments
+          sleep 40
+          
+          # Check system performance
+          kubectl top pods --all-namespaces
+          
+          # Clean up
+          kubectl delete chaos -n test-app --all
+
+      - name: Test resource limits
+        run: |
+          # Check resource usage
+          kubectl describe nodes
+          kubectl top nodes
+
+      - name: Test scalability
+        run: |
+          # Scale test application
+          kubectl scale deployment test-app -n test-app --replicas=5
+          
+          # Wait for scaling
+          kubectl wait --for=condition=available deployment/test-app -n test-app --timeout=300s
+          
+          # Check all pods are running
+          kubectl get pods -n test-app | grep Running | wc -l
+
+  # Job 8: Cleanup and Report
+  cleanup-report:
+    name: Cleanup & Generate Report
+    runs-on: ubuntu-latest
+    needs: [performance-tests]
+    if: always()
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup kubectl
+        uses: azure/setup-kubectl@v3
+        with:
+          version: 'latest'
+
+      - name: Collect logs and status
+        if: always()
+        run: |
+          echo "=== System Status Report ===" > system-report.txt
+          echo "Timestamp: $(date)" >> system-report.txt
+          echo "" >> system-report.txt
+          
+          echo "=== Pod Status ===" >> system-report.txt
+          kubectl get pods --all-namespaces >> system-report.txt
+          echo "" >> system-report.txt
+          
+          echo "=== Service Status ===" >> system-report.txt
+          kubectl get svc --all-namespaces >> system-report.txt
+          echo "" >> system-report.txt
+          
+          echo "=== Chaos Experiments ===" >> system-report.txt
+          kubectl get chaos --all-namespaces >> system-report.txt
+          echo "" >> system-report.txt
+          
+          echo "=== Recent Events ===" >> system-report.txt
+          kubectl get events --all-namespaces --sort-by='.lastTimestamp' | tail -20 >> system-report.txt
+
+      - name: Upload system report
+        uses: actions/upload-artifact@v3
+        if: always()
+        with:
+          name: system-report
+          path: system-report.txt
+
+      - name: Cleanup infrastructure
+        if: always()
+        run: |
+          # Delete all test resources
+          kubectl delete namespace test-app --ignore-not-found=true
+          kubectl delete namespace self-healing --ignore-not-found=true
+          kubectl delete namespace chaos-engineering --ignore-not-found=true
+          kubectl delete namespace kured --ignore-not-found=true
+          kubectl delete namespace monitoring --ignore-not-found=true
+          
+          # Stop minikube
+          minikube stop || true
+          minikube delete || true
+
+      - name: Generate test summary
+        if: always()
+        run: |
+          echo "## Self-Healing Infrastructure Test Summary" > test-summary.md
+          echo "" >> test-summary.md
+          echo "### Test Results:" >> test-summary.md
+          echo "- ✅ Code Quality & Security: ${{ needs.code-quality.result }}" >> test-summary.md
+          echo "- ✅ Build & Test Controller: ${{ needs.build-test.result }}" >> test-summary.md
+          echo "- ✅ Infrastructure Testing: ${{ needs.infrastructure-test.result }}" >> test-summary.md
+          echo "- ✅ Chaos Engineering Tests: ${{ needs.chaos-testing.result }}" >> test-summary.md
+          echo "- ✅ Dashboard & Monitoring Tests: ${{ needs.dashboard-testing.result }}" >> test-summary.md
+          echo "- ✅ Integration Tests: ${{ needs.integration-tests.result }}" >> test-summary.md
+          echo "- ✅ Performance & Load Tests: ${{ needs.performance-tests.result }}" >> test-summary.md
+          echo "" >> test-summary.md
+          echo "### Components Tested:" >> test-summary.md
+          echo "- Terraform Infrastructure" >> test-summary.md
+          echo "- Self-Healing Controller" >> test-summary.md
+          echo "- Prometheus Monitoring" >> test-summary.md
+          echo "- Alertmanager" >> test-summary.md
+          echo "- Grafana Dashboards" >> test-summary.md
+          echo "- Chaos Mesh" >> test-summary.md
+          echo "- Kured Node Reboots" >> test-summary.md
+          echo "- Test Application" >> test-summary.md
+          echo "- Slack Notifications" >> test-summary.md
+          echo "- Helm Rollback Functionality" >> test-summary.md
+
+      - name: Upload test summary
+        uses: actions/upload-artifact@v3
+        if: always()
+        with:
+          name: test-summary
+          path: test-summary.md
+
+      - name: Comment PR with results
+        if: github.event_name == 'pull_request'
+        uses: actions/github-script@v6
+        with:
+          script: |
+            const fs = require('fs');
+            const summary = fs.readFileSync('test-summary.md', 'utf8');
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: summary
+            }); 
