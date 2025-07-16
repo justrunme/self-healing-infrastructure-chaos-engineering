@@ -267,4 +267,4 @@ class TestControllerIntegration:
                     controller = SelfHealingController()
                     config = controller._load_config()
                     assert config['pod_failure_threshold'] == 5
-                    assert config['slack_notifications_enabled'] is False 
+                    assert config['slack_notifications_enabled'] is False
