@@ -195,10 +195,24 @@ jobs:
             exit 1
           }
 
+      - name: Pre-pull Kured image
+        run: |
+          echo "Pre-pulling Kured image..."
+          docker pull weaveworks/kured:v1.13.2
+          minikube image load weaveworks/kured:v1.13.2
+          
       - name: Deploy Kured
         run: |
           kubectl apply -f kubernetes/kured/kured.yaml
-          kubectl wait --for=condition=ready pod -l app=kured -n kured --timeout=300s
+          echo "Waiting for Kured to be ready..."
+          kubectl wait --for=condition=ready pod -l app=kured -n kured --timeout=600s || {
+            echo "Kured deployment failed. Checking pod status:"
+            kubectl describe pods -n kured -l app=kured
+            kubectl logs -n kured -l app=kured --tail=50
+            echo "Checking events:"
+            kubectl get events -n kured --sort-by='.lastTimestamp'
+            exit 1
+          }
 
       - name: Deploy Self-Healing Controller
         run: |

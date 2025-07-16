@@ -28,8 +28,8 @@ spec:
       serviceAccountName: kured
       containers:
         - name: kured
-          image: weaveworks/kured:latest
-          imagePullPolicy: Always
+          image: weaveworks/kured:v1.13.2
+          imagePullPolicy: IfNotPresent
           command:
             - /usr/bin/kured
           args:
