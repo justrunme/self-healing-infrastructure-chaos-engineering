@@ -3,10 +3,10 @@
 Unit tests for Self-Healing Controller
 """
 
-import pytest
-from unittest.mock import MagicMock, patch
 import os
+from unittest.mock import MagicMock, patch
 
+import pytest
 from kubernetes.self_healing.self_healing_controller import SelfHealingController  # noqa: E402
 
 
