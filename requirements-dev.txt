@@ -16,7 +16,7 @@ safety==2.3.5
 
 # Type checking
 mypy==1.7.1
-types-requests==2.31.0.10
+types-requests==2.32.4.20250611
 
 # Documentation
 sphinx==7.2.6
