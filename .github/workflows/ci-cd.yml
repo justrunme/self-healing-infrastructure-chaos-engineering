@@ -169,25 +169,31 @@ jobs:
             --set grafana.enabled=true \
             --set grafana.adminPassword=admin123
 
-      - name: Pre-pull Chaos Mesh image
+      - name: Deploy Chaos Mesh via Helm
         run: |
-          echo "Pre-pulling Chaos Mesh image..."
-          docker pull ghcr.io/chaos-mesh/chaos-mesh:v2.6.0
-          minikube image load ghcr.io/chaos-mesh/chaos-mesh:v2.6.0
+          echo "Installing Chaos Mesh via Helm..."
+          helm repo add chaos-mesh https://charts.chaos-mesh.org
+          helm repo update
+          helm install chaos-mesh chaos-mesh/chaos-mesh \
+            --namespace chaos-engineering \
+            --create-namespace \
+            --set chaosDaemon.runtime=containerd \
+            --set chaosDaemon.socketPath=/run/containerd/containerd.sock \
+            --set controllerManager.enabled=true \
+            --set dashboard.enabled=false \
+            --set dnsServer.create=false \
+            --set chaosDaemon.podSecurityContext.runAsNonRoot=false \
+            --set chaosDaemon.podSecurityContext.runAsUser=0
           
-      - name: Deploy Chaos Mesh
-        run: |
-          kubectl apply -f kubernetes/chaos-engineering/chaos-mesh.yaml
           echo "Waiting for Chaos Mesh to be ready..."
-          kubectl get pods -n chaos-engineering -w &
-          WAIT_PID=$!
-          kubectl wait --for=condition=ready pod -l app=chaos-mesh -n chaos-engineering --timeout=600s || {
+          kubectl wait --for=condition=ready pod -l app.kubernetes.io/name=chaos-mesh -n chaos-engineering --timeout=600s || {
             echo "Chaos Mesh deployment failed. Checking pod status:"
-            kubectl describe pods -n chaos-engineering -l app=chaos-mesh
-            kubectl logs -n chaos-engineering -l app=chaos-mesh --tail=50
+            kubectl describe pods -n chaos-engineering -l app.kubernetes.io/name=chaos-mesh
+            kubectl logs -n chaos-engineering -l app.kubernetes.io/name=chaos-mesh --tail=50
+            echo "Checking events:"
+            kubectl get events -n chaos-engineering --sort-by='.lastTimestamp'
             exit 1
           }
-          kill $WAIT_PID
 
       - name: Deploy Kured
         run: |
