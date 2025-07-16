@@ -11,9 +11,9 @@ import os
 import subprocess
 
 import requests
-from kubernetes.client.rest import ApiException
 
 from kubernetes import client, config, watch
+from kubernetes.client.rest import ApiException
 
 # Configure logging
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
