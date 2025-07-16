@@ -15,10 +15,7 @@ import subprocess
 
 
 # Configure logging
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-)
+logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
 logger = logging.getLogger(__name__)
 
 
@@ -34,20 +31,24 @@ class SelfHealingController:
     def _load_config(self):
         """Load configuration from environment variables"""
         return {
-            'pod_failure_threshold': int(os.getenv('POD_FAILURE_THRESHOLD', 3)),
-            'pod_restart_timeout': int(os.getenv('POD_RESTART_TIMEOUT', 300)),
-            'node_failure_threshold': int(os.getenv('NODE_FAILURE_THRESHOLD', 2)),
-            'node_unreachable_timeout': int(os.getenv('NODE_UNREACHABLE_TIMEOUT', 600)),
-            'helm_rollback_enabled': os.getenv('HELM_ROLLBACK_ENABLED', 'true').lower() == 'true',
-            'helm_rollback_timeout': int(os.getenv('HELM_ROLLBACK_TIMEOUT', 300)),
-            'kured_integration_enabled': os.getenv('KURED_INTEGRATION_ENABLED', 'true').lower() == 'true',
-            'slack_notifications_enabled': os.getenv('SLACK_NOTIFICATIONS_ENABLED', 'true').lower() == 'true',
-            'slack_webhook_url': os.getenv('SLACK_WEBHOOK_URL', ''),
-            'slack_channel': os.getenv('SLACK_CHANNEL', '#alerts'),
-            'prometheus_enabled': os.getenv('PROMETHEUS_ENABLED', 'true').lower() == 'true',
-            'prometheus_url': os.getenv('PROMETHEUS_URL', 'http://prometheus-service.monitoring.svc.cluster.local:9090'),
-            'chaos_engineering_enabled': os.getenv('CHAOS_ENGINEERING_ENABLED', 'true').lower() == 'true',
-            'chaos_mesh_url': os.getenv('CHAOS_MESH_URL', 'http://chaos-mesh-controller-manager.chaos-engineering.svc.cluster.local:10080')
+            "pod_failure_threshold": int(os.getenv("POD_FAILURE_THRESHOLD", 3)),
+            "pod_restart_timeout": int(os.getenv("POD_RESTART_TIMEOUT", 300)),
+            "node_failure_threshold": int(os.getenv("NODE_FAILURE_THRESHOLD", 2)),
+            "node_unreachable_timeout": int(os.getenv("NODE_UNREACHABLE_TIMEOUT", 600)),
+            "helm_rollback_enabled": os.getenv("HELM_ROLLBACK_ENABLED", "true").lower() == "true",
+            "helm_rollback_timeout": int(os.getenv("HELM_ROLLBACK_TIMEOUT", 300)),
+            "kured_integration_enabled": os.getenv("KURED_INTEGRATION_ENABLED", "true").lower() == "true",
+            "slack_notifications_enabled": os.getenv("SLACK_NOTIFICATIONS_ENABLED", "true").lower() == "true",
+            "slack_webhook_url": os.getenv("SLACK_WEBHOOK_URL", ""),
+            "slack_channel": os.getenv("SLACK_CHANNEL", "#alerts"),
+            "prometheus_enabled": os.getenv("PROMETHEUS_ENABLED", "true").lower() == "true",
+            "prometheus_url": os.getenv(
+                "PROMETHEUS_URL", "http://prometheus-service.monitoring.svc.cluster.local:9090"
+            ),
+            "chaos_engineering_enabled": os.getenv("CHAOS_ENGINEERING_ENABLED", "true").lower() == "true",
+            "chaos_mesh_url": os.getenv(
+                "CHAOS_MESH_URL", "http://chaos-mesh-controller-manager.chaos-engineering.svc.cluster.local:10080"
+            ),
         }
 
     def _init_kubernetes_client(self):
@@ -74,10 +75,10 @@ class SelfHealingController:
 
         w = watch.Watch()
         for event in w.stream(self.k8s_client.list_pod_for_all_namespaces):
-            pod = event['object']
-            event_type = event['type']
+            pod = event["object"]
+            event_type = event["type"]
 
-            if event_type in ['MODIFIED', 'DELETED']:
+            if event_type in ["MODIFIED", "DELETED"]:
                 self._handle_pod_event(pod, event_type)
 
     def _handle_pod_event(self, pod, event_type):
@@ -85,7 +86,7 @@ class SelfHealingController:
         namespace = pod.metadata.namespace
 
         # Skip system pods
-        if namespace in ['kube-system', 'monitoring', 'chaos-engineering']:
+        if namespace in ["kube-system", "monitoring", "chaos-engineering"]:
             return
 
         # Check for pod failures
@@ -96,12 +97,12 @@ class SelfHealingController:
 
     def _is_pod_failing(self, pod):
         """Check if pod is in a failed state"""
-        if pod.status.phase in ['Failed', 'Unknown']:
+        if pod.status.phase in ["Failed", "Unknown"]:
             return True
 
         if pod.status.conditions:
             for condition in pod.status.conditions:
-                if condition.type == 'Ready' and condition.status == 'False':
+                if condition.type == "Ready" and condition.status == "False":
                     return True
 
         return False
@@ -110,7 +111,7 @@ class SelfHealingController:
         """Check if pod is crash looping"""
         if pod.status.container_statuses:
             for container in pod.status.container_statuses:
-                if container.restart_count > self.config['pod_failure_threshold']:
+                if container.restart_count > self.config["pod_failure_threshold"]:
                     return True
         return False
 
@@ -123,8 +124,7 @@ class SelfHealingController:
 
         # Send notification
         self._send_slack_notification(
-            f"🚨 Pod Failure: {pod_name}",
-            f"Pod {pod_name} in namespace {namespace} has failed. Attempting recovery..."
+            f"🚨 Pod Failure: {pod_name}", f"Pod {pod_name} in namespace {namespace} has failed. Attempting recovery..."
         )
 
         # Attempt pod restart
@@ -144,7 +144,7 @@ class SelfHealingController:
         # Send notification
         self._send_slack_notification(
             f"🔄 Crash Looping Pod: {pod_name}",
-            f"Pod {pod_name} in namespace {namespace} is crash looping. Attempting recovery..."
+            f"Pod {pod_name} in namespace {namespace} is crash looping. Attempting recovery...",
         )
 
         # Attempt pod restart
@@ -153,10 +153,7 @@ class SelfHealingController:
     def _restart_pod(self, pod):
         """Restart a pod by deleting it"""
         try:
-            self.k8s_client.delete_namespaced_pod(
-                name=pod.metadata.name,
-                namespace=pod.metadata.namespace
-            )
+            self.k8s_client.delete_namespaced_pod(name=pod.metadata.name, namespace=pod.metadata.namespace)
             logger.info(f"Restarted pod: {pod.metadata.namespace}/{pod.metadata.name}")
         except ApiException as e:
             logger.error(f"Failed to restart pod {pod.metadata.name}: {e}")
@@ -164,16 +161,16 @@ class SelfHealingController:
     def _is_helm_managed_pod(self, pod):
         """Check if pod is managed by Helm"""
         if pod.metadata.labels:
-            return 'app.kubernetes.io/managed-by' in pod.metadata.labels
+            return "app.kubernetes.io/managed-by" in pod.metadata.labels
         return False
 
     def _handle_helm_pod_failure(self, pod):
         """Handle failure of Helm-managed pod"""
-        if not self.config['helm_rollback_enabled']:
+        if not self.config["helm_rollback_enabled"]:
             return
 
         # Extract Helm release name from pod labels
-        release_name = pod.metadata.labels.get('app.kubernetes.io/instance')
+        release_name = pod.metadata.labels.get("app.kubernetes.io/instance")
         if not release_name:
             return
 
@@ -181,27 +178,29 @@ class SelfHealingController:
 
         # Perform Helm rollback
         try:
-            result = subprocess.run([
-                'helm', 'rollback', release_name, '--namespace', pod.metadata.namespace
-            ], capture_output=True, text=True, timeout=self.config['helm_rollback_timeout'])
+            result = subprocess.run(
+                ["helm", "rollback", release_name, "--namespace", pod.metadata.namespace],
+                capture_output=True,
+                text=True,
+                timeout=self.config["helm_rollback_timeout"],
+            )
 
             if result.returncode == 0:
                 logger.info(f"Successfully rolled back Helm release: {release_name}")
                 self._send_slack_notification(
                     f"✅ Helm Rollback: {release_name}",
-                    f"Successfully rolled back Helm release {release_name} in namespace {pod.metadata.namespace}"
+                    f"Successfully rolled back Helm release {release_name} in namespace {pod.metadata.namespace}",
                 )
             else:
                 logger.error(f"Failed to rollback Helm release {release_name}: {result.stderr}")
                 self._send_slack_notification(
                     f"❌ Helm Rollback Failed: {release_name}",
-                    f"Failed to rollback Helm release {release_name}: {result.stderr}"
+                    f"Failed to rollback Helm release {release_name}: {result.stderr}",
                 )
         except subprocess.TimeoutExpired:
             logger.error(f"Helm rollback timed out for release: {release_name}")
             self._send_slack_notification(
-                f"⏰ Helm Rollback Timeout: {release_name}",
-                f"Helm rollback timed out for release {release_name}"
+                f"⏰ Helm Rollback Timeout: {release_name}", f"Helm rollback timed out for release {release_name}"
             )
         except Exception as e:
             logger.error(f"Unexpected error during Helm rollback: {e}")
@@ -212,10 +211,10 @@ class SelfHealingController:
 
         w = watch.Watch()
         for event in w.stream(self.k8s_client.list_node):
-            node = event['object']
-            event_type = event['type']
+            node = event["object"]
+            event_type = event["type"]
 
-            if event_type in ['MODIFIED', 'DELETED']:
+            if event_type in ["MODIFIED", "DELETED"]:
                 self._handle_node_event(node, event_type)
 
     def _handle_node_event(self, node, event_type):
@@ -227,7 +226,7 @@ class SelfHealingController:
         """Check if node is in a failed state"""
         if node.status.conditions:
             for condition in node.status.conditions:
-                if condition.type == 'Ready' and condition.status == 'False':
+                if condition.type == "Ready" and condition.status == "False":
                     return True
         return False
 
@@ -239,12 +238,11 @@ class SelfHealingController:
 
         # Send notification
         self._send_slack_notification(
-            f"🚨 Node Failure: {node.metadata.name}",
-            f"Node {node.metadata.name} has failed. Triggering reboot..."
+            f"🚨 Node Failure: {node.metadata.name}", f"Node {node.metadata.name} has failed. Triggering reboot..."
         )
 
         # Trigger node reboot via Kured
-        if self.config['kured_integration_enabled']:
+        if self.config["kured_integration_enabled"]:
             self._trigger_node_reboot(node)
 
     def _trigger_node_reboot(self, node):
@@ -252,14 +250,7 @@ class SelfHealingController:
         try:
             # Annotate node to trigger Kured reboot
             self.k8s_client.patch_node(
-                name=node.metadata.name,
-                body={
-                    'metadata': {
-                        'annotations': {
-                            'weave.works/kured-node-lock': ''
-                        }
-                    }
-                }
+                name=node.metadata.name, body={"metadata": {"annotations": {"weave.works/kured-node-lock": ""}}}
             )
             logger.info(f"Triggered reboot for node: {node.metadata.name}")
         except ApiException as e:
@@ -272,22 +263,18 @@ class SelfHealingController:
 
     def _send_slack_notification(self, title, message):
         """Send notification to Slack"""
-        if not self.config['slack_notifications_enabled'] or not self.config['slack_webhook_url']:
+        if not self.config["slack_notifications_enabled"] or not self.config["slack_webhook_url"]:
             return
 
         payload = {
-            'channel': self.config['slack_channel'],
-            'text': f"*{title}*\n{message}",
-            'username': 'Self-Healing Controller',
-            'icon_emoji': ':robot_face:'
+            "channel": self.config["slack_channel"],
+            "text": f"*{title}*\n{message}",
+            "username": "Self-Healing Controller",
+            "icon_emoji": ":robot_face:",
         }
 
         try:
-            response = requests.post(
-                self.config['slack_webhook_url'],
-                json=payload,
-                timeout=10
-            )
+            response = requests.post(self.config["slack_webhook_url"], json=payload, timeout=10)
             if response.status_code == 200:
                 logger.info("Slack notification sent successfully")
             else:
@@ -298,9 +285,9 @@ class SelfHealingController:
     def get_metrics(self):
         """Get metrics for monitoring"""
         return {
-            'pod_failures': len(self.pod_failures),
-            'node_failures': len(self.node_failures),
-            'helm_rollbacks': len(self.helm_releases)
+            "pod_failures": len(self.pod_failures),
+            "node_failures": len(self.node_failures),
+            "helm_rollbacks": len(self.helm_releases),
         }
 
 
