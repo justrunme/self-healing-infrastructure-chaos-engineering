@@ -195,33 +195,15 @@ jobs:
             exit 1
           }
 
-      - name: Deploy Kured via Helm
+      - name: Deploy Kured
         run: |
-          echo "Installing Kured via Helm..."
-          helm repo add weaveworks https://weaveworks.github.io/kured
-          helm repo update
-          helm install kured weaveworks/kured \
-            --namespace kured \
-            --create-namespace \
-            --set configuration.rebootDays=sun,mon,tue,wed,thu,fri,sat \
-            --set configuration.startTime=00:00 \
-            --set configuration.endTime=23:59 \
-            --set configuration.timeZone=UTC \
-            --set configuration.blockingPods[0]=kube-system/calico-node \
-            --set configuration.blockingPods[1]=kube-system/kube-proxy \
-            --set configuration.period=1h \
-            --set configuration.rebootSentinelFile=/var/run/reboot-required \
-            --set configuration.lockAnnotation=weave.works/kured-node-lock \
-            --set configuration.lockTtl=0s \
-            --set configuration.dsName=kured \
-            --set configuration.dsNamespace=kured \
-            --set configuration.metricsAddr=:8080
-          
+          echo "Installing Kured via kubectl..."
+          kubectl apply -f kubernetes/kured/kured.yaml
           echo "Waiting for Kured to be ready..."
-          kubectl wait --for=condition=ready pod -l app.kubernetes.io/name=kured -n kured --timeout=600s || {
+          kubectl wait --for=condition=ready pod -l app=kured -n kured --timeout=600s || {
             echo "Kured deployment failed. Checking pod status:"
-            kubectl describe pods -n kured -l app.kubernetes.io/name=kured
-            kubectl logs -n kured -l app.kubernetes.io/name=kured --tail=50
+            kubectl describe pods -n kured -l app=kured
+            kubectl logs -n kured -l app=kured --tail=50
             echo "Checking events:"
             kubectl get events -n kured --sort-by='.lastTimestamp'
             exit 1
