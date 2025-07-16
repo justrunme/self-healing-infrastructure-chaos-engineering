@@ -6,13 +6,14 @@ This controller monitors Kubernetes cluster for failures and automatically
 responds by restarting pods, scaling applications, and performing rollbacks.
 """
 
-import os
 import logging
-import requests
-from kubernetes import client, config, watch
-from kubernetes.client.rest import ApiException
+import os
 import subprocess
 
+import requests
+from kubernetes.client.rest import ApiException
+
+from kubernetes import client, config, watch
 
 # Configure logging
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
