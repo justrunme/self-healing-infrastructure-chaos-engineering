@@ -9,8 +9,8 @@ import sys
 # Add parent directory to path for imports
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-import pytest
-from unittest.mock import MagicMock, patch
+import pytest  # noqa: E402
+from unittest.mock import MagicMock, patch  # noqa: E402
 
 from self_healing_controller import SelfHealingController  # noqa: E402
 
