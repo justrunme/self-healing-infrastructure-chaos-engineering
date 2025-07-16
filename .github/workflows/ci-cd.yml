@@ -56,17 +56,6 @@ jobs:
           pip install yamllint
           yamllint kubernetes/ terraform/ helm-charts/
 
-      - name: Setup kubectl
-        uses: azure/setup-kubectl@v3
-        with:
-          version: 'latest'
-
-      - name: Validate Kubernetes manifests
-        run: |
-          for file in $(find kubernetes/ -name "*.yaml"); do
-            kubectl apply --dry-run=client -f "$file" || echo "Validation failed for $file"
-          done
-
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v2
         with:
@@ -160,6 +149,14 @@ jobs:
       - name: Verify namespaces
         run: |
           kubectl get namespaces | grep -E "(monitoring|chaos-engineering|self-healing|kured|test-app)"
+
+      - name: Validate Kubernetes manifests
+        run: |
+          echo "Validating Kubernetes manifests..."
+          for file in $(find kubernetes/ -name "*.yaml"); do
+            echo "Validating $file"
+            kubectl apply --dry-run=client -f "$file" || echo "Validation failed for $file"
+          done
 
       - name: Deploy monitoring stack
         run: |
