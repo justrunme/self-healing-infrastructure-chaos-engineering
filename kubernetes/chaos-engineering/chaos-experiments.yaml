@@ -103,4 +103,4 @@ spec:
     - test-app
   duration: "10s"
   scheduler:
-    cron: "@every 8m" 
+    cron: "@every 8m"

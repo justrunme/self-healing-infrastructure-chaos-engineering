@@ -100,4 +100,4 @@ data:
 
     {{ define "slack.prometheusURL" }}
     http://prometheus-service.monitoring.svc.cluster.local:9090/graph?g0.expr={{ .CommonLabels.alertname }}
-    {{ end }} 
+    {{ end }}

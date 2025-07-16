@@ -144,4 +144,4 @@ data:
               component: chaos-engineering
             annotations:
               summary: "Chaos experiment {{ $labels.name }} failed"
-              description: "Chaos experiment {{ $labels.name }} in namespace {{ $labels.namespace }} has failed." 
+              description: "Chaos experiment {{ $labels.name }} in namespace {{ $labels.namespace }} has failed."

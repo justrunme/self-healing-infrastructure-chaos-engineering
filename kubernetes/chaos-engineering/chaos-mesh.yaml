@@ -125,4 +125,4 @@ roleRef:
 subjects:
   - kind: ServiceAccount
     name: chaos-mesh-controller-manager
-    namespace: chaos-engineering 
+    namespace: chaos-engineering

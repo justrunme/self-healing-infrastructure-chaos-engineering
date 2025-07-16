@@ -50,27 +50,27 @@ config:
   # Pod failure detection
   podFailureThreshold: 3
   podRestartTimeout: 300
-  
+
   # Node failure detection
   nodeFailureThreshold: 2
   nodeUnreachableTimeout: 600
-  
+
   # Helm rollback configuration
   helmRollbackEnabled: true
   helmRollbackTimeout: 300
-  
+
   # Kured integration
   kuredIntegrationEnabled: true
-  
+
   # Slack notifications
   slackNotificationsEnabled: true
   slackWebhookUrl: ""
   slackChannel: "#alerts"
-  
+
   # Prometheus integration
   prometheusEnabled: true
   prometheusUrl: "http://prometheus-service.monitoring.svc.cluster.local:9090"
-  
+
   # Chaos engineering integration
   chaosEngineeringEnabled: true
   chaosMeshUrl: "http://chaos-mesh-controller-manager.chaos-engineering.svc.cluster.local:10080"
@@ -82,4 +82,4 @@ monitoring:
     enabled: true
     interval: 30s
   prometheusRule:
-    enabled: true 
+    enabled: true

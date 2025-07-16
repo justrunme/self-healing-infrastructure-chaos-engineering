@@ -134,4 +134,4 @@ roleRef:
 subjects:
   - kind: ServiceAccount
     name: kured
-    namespace: kured 
+    namespace: kured
