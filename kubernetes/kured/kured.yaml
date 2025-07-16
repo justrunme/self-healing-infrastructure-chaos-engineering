@@ -28,7 +28,7 @@ spec:
       serviceAccountName: kured
       containers:
         - name: kured
-          image: weaveworks/kured:v1.13.2
+          image: ghcr.io/weaveworks/kured:v1.13.2
           imagePullPolicy: IfNotPresent
           command:
             - /usr/bin/kured

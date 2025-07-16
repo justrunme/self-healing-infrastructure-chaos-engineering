@@ -198,8 +198,8 @@ jobs:
       - name: Pre-pull Kured image
         run: |
           echo "Pre-pulling Kured image..."
-          docker pull weaveworks/kured:v1.13.2
-          minikube image load weaveworks/kured:v1.13.2
+          docker pull ghcr.io/weaveworks/kured:v1.13.2
+          minikube image load ghcr.io/weaveworks/kured:v1.13.2
           
       - name: Deploy Kured
         run: |
