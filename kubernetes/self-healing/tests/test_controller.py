@@ -3,16 +3,11 @@
 Unit tests for Self-Healing Controller
 """
 
+import pytest
+from unittest.mock import MagicMock, patch
 import os
-import sys
 
-# Add parent directory to path for imports
-sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-
-from unittest.mock import MagicMock, patch  # noqa: E402
-
-import pytest  # noqa: E402
-from self_healing_controller import SelfHealingController  # noqa: E402
+from kubernetes.self_healing.self_healing_controller import SelfHealingController  # noqa: E402
 
 
 class TestSelfHealingController:
