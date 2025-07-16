@@ -6,14 +6,15 @@ WORKDIR /app
 # Install system dependencies and add Helm & kubectl
 RUN apt-get update && \
     apt-get install -y curl apt-transport-https gnupg lsb-release && \
-    # Install kubectl
-    curl -fsSLo /usr/share/keyrings/kubernetes-archive-keyring.gpg https://packages.cloud.google.com/apt/doc/apt-key.gpg && \
-    echo "deb [signed-by=/usr/share/keyrings/kubernetes-archive-keyring.gpg] https://apt.kubernetes.io/ kubernetes-$(lsb_release -cs) main" > /etc/apt/sources.list.d/kubernetes.list && \
+    # Install kubectl directly
+    curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl" && \
+    chmod +x kubectl && \
+    mv kubectl /usr/local/bin/ && \
     # Install Helm
     curl https://baltocdn.com/helm/signing.asc | gpg --dearmor -o /usr/share/keyrings/helm.gpg && \
     echo "deb [signed-by=/usr/share/keyrings/helm.gpg] https://baltocdn.com/helm/stable/debian/ all main" > /etc/apt/sources.list.d/helm-stable-debian.list && \
     apt-get update && \
-    apt-get install -y helm kubectl && \
+    apt-get install -y helm && \
     rm -rf /var/lib/apt/lists/*
 
 # Copy requirements first for better caching
