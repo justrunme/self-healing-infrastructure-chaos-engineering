@@ -30,8 +30,8 @@ variable "prometheus_retention_days" {
 
 variable "alertmanager_config" {
   description = "Alertmanager configuration"
-  type        = map(any)
-  default = {
+  type        = any
+  default     = {
     global = {
       slack_api_url = ""
     }
