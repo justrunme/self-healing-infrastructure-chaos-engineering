@@ -172,7 +172,16 @@ jobs:
       - name: Deploy Chaos Mesh
         run: |
           kubectl apply -f kubernetes/chaos-engineering/chaos-mesh.yaml
-          kubectl wait --for=condition=ready pod -l app=chaos-mesh -n chaos-engineering --timeout=300s
+          echo "Waiting for Chaos Mesh to be ready..."
+          kubectl get pods -n chaos-engineering -w &
+          WAIT_PID=$!
+          kubectl wait --for=condition=ready pod -l app=chaos-mesh -n chaos-engineering --timeout=600s || {
+            echo "Chaos Mesh deployment failed. Checking pod status:"
+            kubectl describe pods -n chaos-engineering -l app=chaos-mesh
+            kubectl logs -n chaos-engineering -l app=chaos-mesh --tail=50
+            exit 1
+          }
+          kill $WAIT_PID
 
       - name: Deploy Kured
         run: |
