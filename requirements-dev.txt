@@ -15,7 +15,7 @@ bandit==1.7.5
 safety==2.3.5
 
 # Type checking
-mypy==1.7.1
+mypy==1.17.0
 types-requests==2.31.0.10
 
 # Documentation
