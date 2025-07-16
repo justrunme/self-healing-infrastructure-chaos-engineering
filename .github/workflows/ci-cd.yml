@@ -169,6 +169,12 @@ jobs:
             --set grafana.enabled=true \
             --set grafana.adminPassword=admin123
 
+      - name: Pre-pull Chaos Mesh image
+        run: |
+          echo "Pre-pulling Chaos Mesh image..."
+          docker pull chaosmesh/chaos-mesh:v2.6.0
+          minikube image load chaosmesh/chaos-mesh:v2.6.0
+          
       - name: Deploy Chaos Mesh
         run: |
           kubectl apply -f kubernetes/chaos-engineering/chaos-mesh.yaml

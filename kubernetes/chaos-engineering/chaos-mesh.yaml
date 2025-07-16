@@ -32,8 +32,8 @@ spec:
       serviceAccountName: chaos-mesh-controller-manager
       containers:
         - name: chaos-mesh-controller-manager
-          image: chaosmesh/chaos-mesh:latest
-          imagePullPolicy: Always
+          image: chaosmesh/chaos-mesh:v2.6.0
+          imagePullPolicy: IfNotPresent
           command:
             - /usr/local/bin/chaos-controller-manager
           args:
