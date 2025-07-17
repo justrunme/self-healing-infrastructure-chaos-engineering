@@ -26,6 +26,13 @@ spec:
         prometheus.io/port: "8080"
     spec:
       serviceAccountName: kured
+      initContainers:
+        - name: create-reboot-file
+          image: busybox:1.35
+          command: ['sh', '-c', 'touch /var/run/reboot-required']
+          volumeMounts:
+            - name: var-run
+              mountPath: /var/run
       containers:
         - name: kured
           image: ghcr.io/weaveworks/kured:main-796014a
@@ -38,6 +45,7 @@ spec:
             - --lock-annotation=weave.works/kured-node-lock
             - --period=1h
             - --metrics-addr=:8080
+            - --sentinel-file=/var/run/reboot-required
           env:
             - name: WATCHDOG_TIMEOUT
               value: "30"
