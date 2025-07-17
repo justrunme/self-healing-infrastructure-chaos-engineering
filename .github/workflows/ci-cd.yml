@@ -204,10 +204,14 @@ jobs:
 
       - name: Deploy Self-Healing Controller
         run: |
+          echo "Building Self-Healing Controller image..."
           cd kubernetes/self-healing
           docker build -t self-healing-controller:latest .
+          echo "Loading image into Minikube..."
           minikube image load self-healing-controller:latest
           cd ../..
+          
+          echo "Deploying Self-Healing Controller..."
           kubectl apply -f kubernetes/self-healing/deployment.yaml
           
           echo "Checking initial Self-Healing Controller status..."
@@ -218,11 +222,16 @@ jobs:
           kubectl wait --for=condition=ready pod -l app=self-healing-controller -n self-healing --timeout=600s || {
             echo "Self-Healing Controller deployment failed. Checking pod status:"
             kubectl describe pods -n self-healing -l app=self-healing-controller
-            kubectl logs -n self-healing -l app=self-healing-controller --tail=50
+            echo "Checking Self-Healing Controller logs:"
+            kubectl logs -n self-healing -l app=self-healing-controller --tail=100
+            echo "Checking previous container logs:"
+            kubectl logs -n self-healing -l app=self-healing-controller --tail=100 --previous || echo "No previous logs available"
             echo "Checking events:"
             kubectl get events -n self-healing --sort-by='.lastTimestamp'
             echo "Checking Deployment status:"
             kubectl describe deployment self-healing-controller -n self-healing
+            echo "Checking if image is available in Minikube:"
+            minikube image ls | grep self-healing-controller || echo "Image not found in Minikube"
             exit 1
           }
           
