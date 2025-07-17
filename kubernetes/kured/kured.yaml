@@ -36,8 +36,6 @@ spec:
             - --ds-name=kured
             - --ds-namespace=kured
             - --lock-annotation=weave.works/kured-node-lock
-            - --reboot-days=sun,mon,tue,wed,thu,fri,sat
-            - --sentinel-file=/var/run/reboot-required
             - --period=1h
             - --metrics-addr=:8080
           env:
