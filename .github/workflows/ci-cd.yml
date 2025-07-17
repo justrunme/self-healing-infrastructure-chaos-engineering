@@ -226,7 +226,25 @@ jobs:
           minikube image load self-healing-controller:latest
           cd ../..
           kubectl apply -f kubernetes/self-healing/deployment.yaml
-          kubectl wait --for=condition=ready pod -l app=self-healing-controller -n self-healing --timeout=300s
+          
+          echo "Checking initial Self-Healing Controller status..."
+          kubectl get pods -n self-healing
+          kubectl get deployment -n self-healing
+          
+          echo "Waiting for Self-Healing Controller to be ready..."
+          kubectl wait --for=condition=ready pod -l app=self-healing-controller -n self-healing --timeout=600s || {
+            echo "Self-Healing Controller deployment failed. Checking pod status:"
+            kubectl describe pods -n self-healing -l app=self-healing-controller
+            kubectl logs -n self-healing -l app=self-healing-controller --tail=50
+            echo "Checking events:"
+            kubectl get events -n self-healing --sort-by='.lastTimestamp'
+            echo "Checking Deployment status:"
+            kubectl describe deployment self-healing-controller -n self-healing
+            exit 1
+          }
+          
+          echo "Self-Healing Controller deployment successful!"
+          kubectl get pods -n self-healing
 
       - name: Deploy test application
         run: |
