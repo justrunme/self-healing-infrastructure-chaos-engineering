@@ -44,7 +44,6 @@ spec:
             - --ds-namespace=kured
             - --lock-annotation=weave.works/kured-node-lock
             - --period=1h
-            - --metrics-addr=:8080
             - --sentinel-file=/var/run/reboot-required
           env:
             - name: WATCHDOG_TIMEOUT
