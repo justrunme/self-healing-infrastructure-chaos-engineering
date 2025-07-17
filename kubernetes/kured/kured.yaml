@@ -38,10 +38,6 @@ spec:
             - --lock-annotation=weave.works/kured-node-lock
             - --reboot-days=sun,mon,tue,wed,thu,fri,sat
             - --sentinel-file=/var/run/reboot-required
-            - --blocking-pods=kube-system/calico-node,kube-system/kube-proxy
-            - --end-time=23:59
-            - --start-time=00:00
-            - --time-zone=UTC
             - --period=1h
             - --metrics-addr=:8080
           env:

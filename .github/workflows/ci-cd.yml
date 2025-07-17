@@ -208,7 +208,10 @@ jobs:
           kubectl wait --for=condition=ready pod -l app=kured -n kured --timeout=600s || {
             echo "Kured deployment failed. Checking pod status:"
             kubectl describe pods -n kured -l app=kured
-            kubectl logs -n kured -l app=kured --tail=50
+            echo "Checking Kured logs:"
+            kubectl logs -n kured -l app=kured --tail=100
+            echo "Checking previous container logs:"
+            kubectl logs -n kured -l app=kured --tail=100 --previous || echo "No previous logs available"
             echo "Checking events:"
             kubectl get events -n kured --sort-by='.lastTimestamp'
             echo "Checking DaemonSet status:"
