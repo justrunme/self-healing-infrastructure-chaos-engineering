@@ -37,7 +37,7 @@ spec:
             - --ds-namespace=kured
             - --lock-annotation=weave.works/kured-node-lock
             - --reboot-days=sun,mon,tue,wed,thu,fri,sat
-            - --reboot-sentinel-file=/var/run/reboot-required
+            - --sentinel-file=/var/run/reboot-required
             - --blocking-pods=kube-system/calico-node,kube-system/kube-proxy
             - --end-time=23:59
             - --start-time=00:00
