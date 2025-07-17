@@ -31,7 +31,7 @@ spec:
       containers:
         - name: self-healing-controller
           image: self-healing-controller:latest
-          imagePullPolicy: Always
+          imagePullPolicy: Never
           ports:
             - containerPort: 8080
               name: metrics
