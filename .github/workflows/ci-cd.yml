@@ -199,6 +199,8 @@ jobs:
         run: |
           echo "Installing Kured via kubectl..."
           kubectl apply -f kubernetes/kured/kured.yaml
+          echo "Forcing DaemonSet update..."
+          kubectl rollout restart daemonset/kured -n kured
           
           echo "Checking initial Kured status..."
           kubectl get pods -n kured
