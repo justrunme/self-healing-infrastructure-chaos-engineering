@@ -195,12 +195,6 @@ jobs:
             exit 1
           }
 
-      - name: Pre-pull Kured dependencies
-        run: |
-          echo "Pre-pulling busybox image for Kured..."
-          docker pull busybox:1.35
-          minikube image load busybox:1.35
-          
       - name: Deploy Kured
         run: |
           echo "Installing Kured via kubectl..."
