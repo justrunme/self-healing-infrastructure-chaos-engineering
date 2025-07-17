@@ -82,6 +82,8 @@ A comprehensive system for automatic recovery of Kubernetes infrastructure with 
 
 ## 🚀 Quick Start
 
+### Option 1: Full Deployment with Slack Notifications
+
 1. **Prepare cluster:**
    ```bash
    cd terraform
@@ -89,22 +91,46 @@ A comprehensive system for automatic recovery of Kubernetes infrastructure with 
    terraform apply
    ```
 
-2. **Deploy monitoring:**
+2. **Create Slack secret (optional):**
+   ```bash
+   kubectl apply -f kubernetes/self-healing/slack-secret.yaml
+   ```
+
+3. **Deploy all components:**
+   ```bash
+   ./scripts/deploy.sh
+   ```
+
+### Option 2: Deployment without Slack Notifications (CI/CD)
+
+1. **Deploy with optional Slack notifications:**
+   ```bash
+   kubectl apply -f kubernetes/self-healing/deployment-optional-slack.yaml
+   ```
+
+2. **Or use the deployment script:**
+   ```bash
+   ./scripts/deploy.sh
+   ```
+
+### Manual Deployment Steps
+
+1. **Deploy monitoring:**
    ```bash
    kubectl apply -f kubernetes/monitoring/
    ```
 
-3. **Deploy Chaos Engineering:**
+2. **Deploy Chaos Engineering:**
    ```bash
    kubectl apply -f kubernetes/chaos-engineering/
    ```
 
-4. **Deploy Self-Healing Controller:**
+3. **Deploy Self-Healing Controller:**
    ```bash
-   kubectl apply -f kubernetes/self-healing/
+   kubectl apply -f kubernetes/self-healing/deployment-optional-slack.yaml
    ```
 
-5. **Deploy Kured:**
+4. **Deploy Kured:**
    ```bash
    kubectl apply -f kubernetes/kured/
    ```
@@ -115,9 +141,67 @@ A comprehensive system for automatic recovery of Kubernetes infrastructure with 
 - Alertmanager UI: `http://localhost:9093`
 - Chaos Mesh UI: `http://localhost:2333`
 
+## 🧪 Testing
+
+### Test Self-Healing Controller
+```bash
+./scripts/test-self-healing.sh
+```
+
+This script will:
+- Check if the controller is running
+- Test metrics and health endpoints
+- Test Chaos Engineering integration
+- Test pod failure recovery
+- Show controller logs
+
+### Run Chaos Experiments
+```bash
+./scripts/test-chaos.sh
+```
+
+This script will run various chaos experiments to test the resilience of your infrastructure.
+
 ## 🔧 Configuration
 
-All configurations are located in their respective folders:
+### Slack Notifications
+
+The Self-Healing Controller supports Slack notifications for incidents. You can configure it in two ways:
+
+#### Option 1: With Slack Notifications
+1. Create a Slack webhook URL in your Slack workspace
+2. Create the secret:
+   ```bash
+   kubectl create secret generic slack-secret \
+     --from-literal=webhook_url=https://hooks.slack.com/services/YOUR/WEBHOOK/URL \
+     -n self-healing
+   ```
+3. Deploy with Slack notifications enabled:
+   ```bash
+   kubectl apply -f kubernetes/self-healing/deployment.yaml
+   ```
+
+#### Option 2: Without Slack Notifications (Default for CI/CD)
+Deploy with Slack notifications disabled:
+```bash
+kubectl apply -f kubernetes/self-healing/deployment-optional-slack.yaml
+```
+
+### Environment Variables
+
+The Self-Healing Controller can be configured using environment variables:
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `SLACK_NOTIFICATIONS_ENABLED` | `true` | Enable/disable Slack notifications |
+| `SLACK_WEBHOOK_URL` | `""` | Slack webhook URL |
+| `SLACK_CHANNEL` | `#alerts` | Slack channel for notifications |
+| `POD_FAILURE_THRESHOLD` | `3` | Number of pod failures before action |
+| `NODE_FAILURE_THRESHOLD` | `2` | Number of node failures before action |
+| `HELM_ROLLBACK_ENABLED` | `true` | Enable Helm rollback on failures |
+| `CHAOS_ENGINEERING_ENABLED` | `true` | Enable Chaos Engineering integration |
+
+### All configurations are located in their respective folders:
 - `kubernetes/` - Kubernetes manifests
 - `terraform/` - Terraform configurations
 - `helm-charts/` - Helm charts

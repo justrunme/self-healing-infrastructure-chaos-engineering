@@ -1,0 +1,146 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: self-healing
+  labels:
+    name: self-healing
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: self-healing-controller
+  namespace: self-healing
+  labels:
+    app: self-healing-controller
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: self-healing-controller
+  template:
+    metadata:
+      labels:
+        app: self-healing-controller
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "8080"
+        prometheus.io/path: "/metrics"
+    spec:
+      serviceAccountName: self-healing-controller
+      containers:
+        - name: self-healing-controller
+          image: self-healing-controller:latest
+          imagePullPolicy: Never
+          ports:
+            - containerPort: 8080
+              name: metrics
+          env:
+            - name: POD_FAILURE_THRESHOLD
+              value: "3"
+            - name: POD_RESTART_TIMEOUT
+              value: "300"
+            - name: NODE_FAILURE_THRESHOLD
+              value: "2"
+            - name: NODE_UNREACHABLE_TIMEOUT
+              value: "600"
+            - name: HELM_ROLLBACK_ENABLED
+              value: "true"
+            - name: HELM_ROLLBACK_TIMEOUT
+              value: "300"
+            - name: KURED_INTEGRATION_ENABLED
+              value: "true"
+            - name: SLACK_NOTIFICATIONS_ENABLED
+              value: "false"
+            - name: SLACK_CHANNEL
+              value: "#alerts"
+            - name: PROMETHEUS_ENABLED
+              value: "true"
+            - name: PROMETHEUS_URL
+              value: "http://prometheus-service.monitoring.svc.cluster.local:9090"
+            - name: CHAOS_ENGINEERING_ENABLED
+              value: "true"
+            - name: CHAOS_MESH_URL
+              value: "http://chaos-mesh-controller-manager.chaos-engineering.svc.cluster.local:10080"
+          resources:
+            limits:
+              cpu: 500m
+              memory: 512Mi
+            requests:
+              cpu: 250m
+              memory: 256Mi
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 8080
+            initialDelaySeconds: 30
+            periodSeconds: 10
+          readinessProbe:
+            httpGet:
+              path: /ready
+              port: 8080
+            initialDelaySeconds: 5
+            periodSeconds: 5
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: self-healing-controller
+  namespace: self-healing
+  labels:
+    app: self-healing-controller
+spec:
+  ports:
+    - port: 8080
+      targetPort: 8080
+      protocol: TCP
+      name: metrics
+  selector:
+    app: self-healing-controller
+
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: self-healing-controller
+  namespace: self-healing
+  labels:
+    app: self-healing-controller
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: self-healing-controller
+  labels:
+    app: self-healing-controller
+rules:
+  - apiGroups: [""]
+    resources: ["pods", "nodes", "services", "endpoints", "events", "configmaps", "secrets"]
+    verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+  - apiGroups: ["apps"]
+    resources: ["deployments", "daemonsets", "replicasets", "statefulsets"]
+    verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+  - apiGroups: ["batch"]
+    resources: ["jobs", "cronjobs"]
+    verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+  - apiGroups: ["autoscaling"]
+    resources: ["horizontalpodautoscalers"]
+    verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: self-healing-controller
+  labels:
+    app: self-healing-controller
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: self-healing-controller
+subjects:
+  - kind: ServiceAccount
+    name: self-healing-controller
+    namespace: self-healing 

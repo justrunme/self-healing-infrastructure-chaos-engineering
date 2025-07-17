@@ -211,8 +211,8 @@ jobs:
           minikube image load self-healing-controller:latest
           cd ../..
           
-          echo "Deploying Self-Healing Controller..."
-          kubectl apply -f kubernetes/self-healing/deployment.yaml
+          echo "Deploying Self-Healing Controller (without Slack notifications)..."
+          kubectl apply -f kubernetes/self-healing/deployment-optional-slack.yaml
           
           echo "Checking initial Self-Healing Controller status..."
           kubectl get pods -n self-healing

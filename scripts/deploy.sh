@@ -131,7 +131,7 @@ deploy_self_healing_controller() {
     cd ../..
     
     print_status "Deploying Self-Healing Controller..."
-    kubectl apply -f kubernetes/self-healing/deployment.yaml
+    kubectl apply -f kubernetes/self-healing/deployment-optional-slack.yaml
     
     # Wait for Self-Healing Controller to be ready
     kubectl wait --for=condition=ready pod -l app=self-healing-controller -n self-healing --timeout=300s
