@@ -40,6 +40,10 @@ spec:
           env:
             - name: WATCHDOG_TIMEOUT
               value: "30"
+            - name: KURED_NODE_ID
+              valueFrom:
+                fieldRef:
+                  fieldPath: spec.nodeName
           securityContext:
             privileged: true
           volumeMounts:
