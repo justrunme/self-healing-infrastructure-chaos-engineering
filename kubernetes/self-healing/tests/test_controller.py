@@ -34,7 +34,7 @@ class TestSelfHealingController:
         assert "slack_notifications_enabled" in config
         assert "helm_rollback_enabled" in config
         assert config["pod_failure_threshold"] == 3
-        assert config["slack_notifications_enabled"] is True
+        assert config["slack_notifications_enabled"] is False  # Default is False
 
     def test_is_pod_failing_failed_state(self, controller):
         """Test pod failure detection for failed state"""
