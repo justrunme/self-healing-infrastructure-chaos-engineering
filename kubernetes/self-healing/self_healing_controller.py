@@ -6,15 +6,14 @@ This controller monitors Kubernetes cluster for failures and automatically
 responds by restarting pods, scaling applications, and performing rollbacks.
 """
 
-import logging
 import os
-import subprocess
 import time
+import logging
 import threading
-
+import subprocess
 import requests
 
-from kubernetes import client, config, watch
+from kubernetes import client, config
 from kubernetes.client.rest import ApiException
 
 # Configure logging
@@ -136,7 +135,7 @@ class SelfHealingController:
         """Check all pods for failures"""
         try:
             pods = self.k8s_client.list_pod_for_all_namespaces()
-            
+
             for pod in pods.items:
                 # Skip system pods and self-healing controller pods
                 if self._should_skip_pod(pod):
@@ -247,7 +246,7 @@ class SelfHealingController:
         """Restart a pod by deleting it"""
         try:
             self.k8s_client.delete_namespaced_pod(
-                name=pod.metadata.name, 
+                name=pod.metadata.name,
                 namespace=pod.metadata.namespace,
                 grace_period_seconds=0  # Force delete immediately
             )
@@ -309,7 +308,7 @@ class SelfHealingController:
         """Check all nodes for failures"""
         try:
             nodes = self.k8s_client.list_node()
-            
+
             for node in nodes.items:
                 if self._is_node_failing(node):
                     self._handle_node_failure(node)
@@ -354,7 +353,7 @@ class SelfHealingController:
         try:
             # Annotate node to trigger Kured reboot
             self.k8s_client.patch_node(
-                name=node.metadata.name, 
+                name=node.metadata.name,
                 body={"metadata": {"annotations": {"weave.works/kured-node-lock": ""}}}
             )
             logger.info(f"Triggered reboot for node: {node.metadata.name}")
@@ -401,14 +400,14 @@ class SelfHealingController:
 def main():
     """Main function to start the Self-Healing Controller"""
     controller = SelfHealingController()
-    
+
     try:
         controller.start_monitoring()
-        
+
         # Keep the main thread alive
         while controller.running:
             time.sleep(1)
-            
+
     except KeyboardInterrupt:
         logger.info("Received interrupt signal, shutting down...")
         controller.stop()
