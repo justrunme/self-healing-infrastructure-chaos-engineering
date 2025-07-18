@@ -6,11 +6,12 @@ This controller monitors Kubernetes cluster for failures and automatically
 responds by restarting pods, scaling applications, and performing rollbacks.
 """
 
-import os
-import time
 import logging
-import threading
+import os
 import subprocess
+import threading
+import time
+
 import requests
 
 from kubernetes import client, config
@@ -109,8 +110,9 @@ class SelfHealingController:
 
     def _start_health_server(self):
         """Start health check server"""
-        from flask import Flask, jsonify
         import threading
+
+        from flask import Flask, jsonify
 
         app = Flask(__name__)
 
