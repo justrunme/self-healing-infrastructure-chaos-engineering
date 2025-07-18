@@ -134,6 +134,9 @@ jobs:
         with:
           version: 'latest'
 
+      - name: Setup Docker
+        uses: docker/setup-buildx-action@v3
+
       - name: Setup Minikube
         run: |
           curl -LO https://storage.googleapis.com/minikube/releases/latest/minikube-linux-amd64
@@ -141,6 +144,11 @@ jobs:
           minikube start --driver=docker --cpus=2 --memory=4096
 
       - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v2
+        with:
+          terraform_version: "1.0"
+
+      - name: Initialize and validate Terraform
         run: |
           cd terraform
           terraform init
@@ -165,10 +173,10 @@ jobs:
           echo "Checking Terraform outputs..."
           cd terraform
           terraform output
-          
+
           echo "Checking all namespaces..."
           kubectl get namespaces | grep -E "(monitoring|chaos-engineering|self-healing|kured|test-app)"
-          
+
           echo "Checking all pods..."
           kubectl get pods --all-namespaces | grep -E "(prometheus|alertmanager|kured|self-healing|test-app)"
 
@@ -176,13 +184,13 @@ jobs:
         run: |
           echo "Waiting for Self-Healing Controller..."
           kubectl wait --for=condition=ready pod -l app=self-healing-controller -n self-healing --timeout=600s
-          
+
           echo "Waiting for test application..."
           kubectl wait --for=condition=ready pod -l app=test-app -n test-app --timeout=300s
-          
+
           echo "Waiting for Prometheus stack..."
           kubectl wait --for=condition=ready pod -l app.kubernetes.io/name=prometheus -n monitoring --timeout=300s
-          
+
           echo "Waiting for Kured..."
           kubectl wait --for=condition=ready pod -l app=kured -n kured --timeout=300s
 
