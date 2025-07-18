@@ -1,0 +1,90 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: prometheus-alerts
+  namespace: monitoring
+data:
+  alerts.yaml: |
+    groups:
+      - name: self-healing-alerts
+        rules:
+          - alert: PodFailure
+            expr: kube_pod_status_phase{phase="Failed"} > 0
+            for: 1m
+            labels:
+              severity: critical
+            annotations:
+              summary: "Pod {{ $labels.pod }} in namespace {{ $labels.namespace }} has failed"
+              description: "Pod {{ $labels.pod }} in namespace {{ $labels.namespace }} is in Failed state for more than 1 minute"
+
+          - alert: PodCrashLooping
+            expr: rate(kube_pod_container_status_restarts_total[5m]) > 0.1
+            for: 2m
+            labels:
+              severity: warning
+            annotations:
+              summary: "Pod {{ $labels.pod }} in namespace {{ $labels.namespace }} is crash looping"
+              description: "Pod {{ $labels.pod }} in namespace {{ $labels.namespace }} is restarting more than 6 times per minute"
+
+          - alert: NodeNotReady
+            expr: kube_node_status_condition{condition="Ready",status="false"} > 0
+            for: 5m
+            labels:
+              severity: critical
+            annotations:
+              summary: "Node {{ $labels.node }} is not ready"
+              description: "Node {{ $labels.node }} has been in NotReady state for more than 5 minutes"
+
+          - alert: HighCPUUsage
+            expr: (rate(container_cpu_usage_seconds_total{container!=""}[5m]) * 100) > 80
+            for: 5m
+            labels:
+              severity: warning
+            annotations:
+              summary: "High CPU usage on {{ $labels.pod }}"
+              description: "Pod {{ $labels.pod }} in namespace {{ $labels.namespace }} is using more than 80% CPU"
+
+          - alert: HighMemoryUsage
+            expr: (container_memory_usage_bytes{container!=""} / container_spec_memory_limit_bytes{container!=""}) * 100 > 85
+            for: 5m
+            labels:
+              severity: warning
+            annotations:
+              summary: "High memory usage on {{ $labels.pod }}"
+              description: "Pod {{ $labels.pod }} in namespace {{ $labels.namespace }} is using more than 85% of memory limit"
+
+          - alert: SelfHealingControllerDown
+            expr: up{job="self-healing-controller"} == 0
+            for: 1m
+            labels:
+              severity: critical
+            annotations:
+              summary: "Self-Healing Controller is down"
+              description: "Self-Healing Controller pod is not responding"
+
+          - alert: TooManyPodRestarts
+            expr: increase(kube_pod_container_status_restarts_total[1h]) > 10
+            for: 1m
+            labels:
+              severity: warning
+            annotations:
+              summary: "Too many pod restarts on {{ $labels.pod }}"
+              description: "Pod {{ $labels.pod }} in namespace {{ $labels.namespace }} has been restarted more than 10 times in the last hour"
+
+          - alert: NetworkErrors
+            expr: rate(container_network_receive_errors_total[5m]) > 0.1
+            for: 5m
+            labels:
+              severity: warning
+            annotations:
+              summary: "Network errors on {{ $labels.pod }}"
+              description: "Pod {{ $labels.pod }} in namespace {{ $labels.namespace }} is experiencing network errors"
+
+          - alert: DiskSpaceLow
+            expr: (node_filesystem_avail_bytes{mountpoint="/"} / node_filesystem_size_bytes{mountpoint="/"}) * 100 < 10
+            for: 5m
+            labels:
+              severity: warning
+            annotations:
+              summary: "Low disk space on {{ $labels.instance }}"
+              description: "Node {{ $labels.instance }} has less than 10% disk space available" 

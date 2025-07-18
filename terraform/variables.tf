@@ -10,6 +10,12 @@ variable "slack_channel" {
   default     = "#alerts"
 }
 
+variable "slack_notifications_enabled" {
+  description = "Enable Slack notifications"
+  type        = bool
+  default     = false
+}
+
 variable "cluster_name" {
   description = "Name of the Kubernetes cluster"
   type        = string
@@ -26,6 +32,19 @@ variable "prometheus_retention_days" {
   description = "Prometheus data retention in days"
   type        = number
   default     = 15
+}
+
+variable "grafana_admin_password" {
+  description = "Grafana admin password"
+  type        = string
+  default     = "admin123"
+  sensitive   = true
+}
+
+variable "self_healing_controller_image" {
+  description = "Self-Healing Controller Docker image"
+  type        = string
+  default     = "self-healing-controller:latest"
 }
 
 variable "alertmanager_config" {

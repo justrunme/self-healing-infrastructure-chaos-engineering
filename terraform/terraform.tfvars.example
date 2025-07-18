@@ -1,0 +1,42 @@
+# Self-Healing Infrastructure Terraform Variables
+# Copy this file to terraform.tfvars and modify as needed
+
+# Slack Configuration
+slack_webhook_url = ""
+slack_channel = "#alerts"
+slack_notifications_enabled = false
+
+# Cluster Configuration
+cluster_name = "self-healing-cluster"
+environment = "dev"
+
+# Monitoring Configuration
+prometheus_retention_days = 15
+grafana_admin_password = "admin123"
+
+# Self-Healing Controller Configuration
+self_healing_controller_image = "self-healing-controller:latest"
+
+# Alertmanager Configuration
+alertmanager_config = {
+  global = {
+    slack_api_url = ""
+  }
+  route = {
+    group_by        = ["alertname"]
+    group_wait      = "10s"
+    group_interval  = "10s"
+    repeat_interval = "1h"
+    receiver        = "slack-notifications"
+  }
+  receivers = [
+    {
+      name = "slack-notifications"
+      slack_configs = [
+        {
+          channel = "#alerts"
+        }
+      ]
+    }
+  ]
+} 

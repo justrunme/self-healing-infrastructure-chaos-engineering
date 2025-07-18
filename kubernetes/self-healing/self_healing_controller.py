@@ -9,6 +9,8 @@ responds by restarting pods, scaling applications, and performing rollbacks.
 import logging
 import os
 import subprocess
+import time
+import threading
 
 import requests
 
@@ -28,6 +30,8 @@ class SelfHealingController:
         self.pod_failures = {}
         self.node_failures = {}
         self.helm_releases = {}
+        self.running = True
+        self.last_check = {}
 
     def _load_config(self):
         """Load configuration from environment variables"""
@@ -39,7 +43,7 @@ class SelfHealingController:
             "helm_rollback_enabled": os.getenv("HELM_ROLLBACK_ENABLED", "true").lower() == "true",
             "helm_rollback_timeout": int(os.getenv("HELM_ROLLBACK_TIMEOUT", 300)),
             "kured_integration_enabled": os.getenv("KURED_INTEGRATION_ENABLED", "true").lower() == "true",
-            "slack_notifications_enabled": os.getenv("SLACK_NOTIFICATIONS_ENABLED", "true").lower() == "true",
+            "slack_notifications_enabled": os.getenv("SLACK_NOTIFICATIONS_ENABLED", "false").lower() == "true",
             "slack_webhook_url": os.getenv("SLACK_WEBHOOK_URL", ""),
             "slack_channel": os.getenv("SLACK_CHANNEL", "#alerts"),
             "prometheus_enabled": os.getenv("PROMETHEUS_ENABLED", "true").lower() == "true",
@@ -50,6 +54,7 @@ class SelfHealingController:
             "chaos_mesh_url": os.getenv(
                 "CHAOS_MESH_URL", "http://chaos-mesh-controller-manager.chaos-engineering.svc.cluster.local:10080"
             ),
+            "check_interval": int(os.getenv("CHECK_INTERVAL", 30)),  # Check every 30 seconds
         }
 
     def _init_kubernetes_client(self):
@@ -64,37 +69,106 @@ class SelfHealingController:
     def start_monitoring(self):
         """Start monitoring the cluster for failures"""
         logger.info("Starting Self-Healing Controller monitoring...")
+        logger.info(f"Configuration: {self.config}")
 
         # Start monitoring threads
-        self._monitor_pods()
-        self._monitor_nodes()
-        self._monitor_helm_releases()
+        self._start_pod_monitoring()
+        self._start_node_monitoring()
+        self._start_health_server()
 
-    def _monitor_pods(self):
-        """Monitor pods for failures"""
-        logger.info("Starting pod monitoring...")
+    def _start_pod_monitoring(self):
+        """Start pod monitoring in a separate thread"""
+        def monitor_pods():
+            while self.running:
+                try:
+                    self._check_pods()
+                    time.sleep(self.config["check_interval"])
+                except Exception as e:
+                    logger.error(f"Error in pod monitoring: {e}")
+                    time.sleep(10)
 
-        w = watch.Watch()
-        for event in w.stream(self.k8s_client.list_pod_for_all_namespaces):
-            pod = event["object"]
-            event_type = event["type"]
+        thread = threading.Thread(target=monitor_pods, daemon=True)
+        thread.start()
+        logger.info("Pod monitoring started")
 
-            if event_type in ["MODIFIED", "DELETED"]:
-                self._handle_pod_event(pod, event_type)
+    def _start_node_monitoring(self):
+        """Start node monitoring in a separate thread"""
+        def monitor_nodes():
+            while self.running:
+                try:
+                    self._check_nodes()
+                    time.sleep(self.config["check_interval"] * 2)  # Check nodes less frequently
+                except Exception as e:
+                    logger.error(f"Error in node monitoring: {e}")
+                    time.sleep(20)
 
-    def _handle_pod_event(self, pod, event_type):
-        """Handle pod events and detect failures"""
+        thread = threading.Thread(target=monitor_nodes, daemon=True)
+        thread.start()
+        logger.info("Node monitoring started")
+
+    def _start_health_server(self):
+        """Start health check server"""
+        from flask import Flask, jsonify
+        import threading
+
+        app = Flask(__name__)
+
+        @app.route('/health')
+        def health():
+            return jsonify({"status": "healthy", "running": self.running})
+
+        @app.route('/ready')
+        def ready():
+            return jsonify({"status": "ready", "running": self.running})
+
+        @app.route('/metrics')
+        def metrics():
+            return jsonify(self.get_metrics())
+
+        def run_server():
+            app.run(host='0.0.0.0', port=8080)
+
+        thread = threading.Thread(target=run_server, daemon=True)
+        thread.start()
+        logger.info("Health server started on port 8080")
+
+    def _check_pods(self):
+        """Check all pods for failures"""
+        try:
+            pods = self.k8s_client.list_pod_for_all_namespaces()
+            
+            for pod in pods.items:
+                # Skip system pods and self-healing controller pods
+                if self._should_skip_pod(pod):
+                    continue
+
+                # Check for pod failures
+                if self._is_pod_failing(pod):
+                    self._handle_pod_failure(pod)
+                elif self._is_pod_crash_looping(pod):
+                    self._handle_crash_looping_pod(pod)
+
+        except Exception as e:
+            logger.error(f"Error checking pods: {e}")
+
+    def _should_skip_pod(self, pod):
+        """Check if pod should be skipped"""
         namespace = pod.metadata.namespace
+        pod_name = pod.metadata.name
 
-        # Skip system pods
-        if namespace in ["kube-system", "monitoring", "chaos-engineering"]:
-            return
+        # Skip system namespaces
+        if namespace in ["kube-system", "monitoring", "chaos-engineering", "self-healing"]:
+            return True
 
-        # Check for pod failures
-        if self._is_pod_failing(pod):
-            self._handle_pod_failure(pod)
-        elif self._is_pod_crash_looping(pod):
-            self._handle_crash_looping_pod(pod)
+        # Skip self-healing controller pods
+        if pod_name.startswith("self-healing-controller-"):
+            return True
+
+        # Skip pods that are being terminated
+        if pod.metadata.deletion_timestamp:
+            return True
+
+        return False
 
     def _is_pod_failing(self, pod):
         """Check if pod is in a failed state"""
@@ -120,8 +194,17 @@ class SelfHealingController:
         """Handle pod failure by attempting recovery"""
         pod_name = pod.metadata.name
         namespace = pod.metadata.namespace
+        pod_key = f"{namespace}/{pod_name}"
 
-        logger.warning(f"Pod failure detected: {namespace}/{pod_name}")
+        # Check if we've already handled this pod recently
+        current_time = time.time()
+        if pod_key in self.last_check:
+            if current_time - self.last_check[pod_key] < 60:  # Wait 60 seconds between checks
+                return
+
+        self.last_check[pod_key] = current_time
+
+        logger.warning(f"Pod failure detected: {pod_key}")
 
         # Send notification
         self._send_slack_notification(
@@ -139,8 +222,17 @@ class SelfHealingController:
         """Handle crash looping pod"""
         pod_name = pod.metadata.name
         namespace = pod.metadata.namespace
+        pod_key = f"{namespace}/{pod_name}"
 
-        logger.warning(f"Crash looping pod detected: {namespace}/{pod_name}")
+        # Check if we've already handled this pod recently
+        current_time = time.time()
+        if pod_key in self.last_check:
+            if current_time - self.last_check[pod_key] < 60:  # Wait 60 seconds between checks
+                return
+
+        self.last_check[pod_key] = current_time
+
+        logger.warning(f"Crash looping pod detected: {pod_key}")
 
         # Send notification
         self._send_slack_notification(
@@ -154,10 +246,17 @@ class SelfHealingController:
     def _restart_pod(self, pod):
         """Restart a pod by deleting it"""
         try:
-            self.k8s_client.delete_namespaced_pod(name=pod.metadata.name, namespace=pod.metadata.namespace)
+            self.k8s_client.delete_namespaced_pod(
+                name=pod.metadata.name, 
+                namespace=pod.metadata.namespace,
+                grace_period_seconds=0  # Force delete immediately
+            )
             logger.info(f"Restarted pod: {pod.metadata.namespace}/{pod.metadata.name}")
         except ApiException as e:
-            logger.error(f"Failed to restart pod {pod.metadata.name}: {e}")
+            if e.status == 404:
+                logger.info(f"Pod {pod.metadata.name} already deleted")
+            else:
+                logger.error(f"Failed to restart pod {pod.metadata.name}: {e}")
 
     def _is_helm_managed_pod(self, pod):
         """Check if pod is managed by Helm"""
@@ -206,22 +305,17 @@ class SelfHealingController:
         except Exception as e:
             logger.error(f"Unexpected error during Helm rollback: {e}")
 
-    def _monitor_nodes(self):
-        """Monitor nodes for failures"""
-        logger.info("Starting node monitoring...")
+    def _check_nodes(self):
+        """Check all nodes for failures"""
+        try:
+            nodes = self.k8s_client.list_node()
+            
+            for node in nodes.items:
+                if self._is_node_failing(node):
+                    self._handle_node_failure(node)
 
-        w = watch.Watch()
-        for event in w.stream(self.k8s_client.list_node):
-            node = event["object"]
-            event_type = event["type"]
-
-            if event_type in ["MODIFIED", "DELETED"]:
-                self._handle_node_event(node, event_type)
-
-    def _handle_node_event(self, node, event_type):
-        """Handle node events and detect failures"""
-        if self._is_node_failing(node):
-            self._handle_node_failure(node)
+        except Exception as e:
+            logger.error(f"Error checking nodes: {e}")
 
     def _is_node_failing(self, node):
         """Check if node is in a failed state"""
@@ -233,13 +327,22 @@ class SelfHealingController:
 
     def _handle_node_failure(self, node):
         """Handle node failure by triggering reboot"""
-        namespace = node.metadata.namespace
+        node_name = node.metadata.name
+        node_key = f"node/{node_name}"
 
-        logger.warning(f"Node failure detected: {namespace}")
+        # Check if we've already handled this node recently
+        current_time = time.time()
+        if node_key in self.last_check:
+            if current_time - self.last_check[node_key] < 300:  # Wait 5 minutes between checks
+                return
+
+        self.last_check[node_key] = current_time
+
+        logger.warning(f"Node failure detected: {node_name}")
 
         # Send notification
         self._send_slack_notification(
-            f"🚨 Node Failure: {node.metadata.name}", f"Node {node.metadata.name} has failed. Triggering reboot..."
+            f"🚨 Node Failure: {node_name}", f"Node {node_name} has failed. Triggering reboot..."
         )
 
         # Trigger node reboot via Kured
@@ -251,16 +354,12 @@ class SelfHealingController:
         try:
             # Annotate node to trigger Kured reboot
             self.k8s_client.patch_node(
-                name=node.metadata.name, body={"metadata": {"annotations": {"weave.works/kured-node-lock": ""}}}
+                name=node.metadata.name, 
+                body={"metadata": {"annotations": {"weave.works/kured-node-lock": ""}}}
             )
             logger.info(f"Triggered reboot for node: {node.metadata.name}")
         except ApiException as e:
             logger.error(f"Failed to trigger reboot for node {node.metadata.name}: {e}")
-
-    def _monitor_helm_releases(self):
-        """Monitor Helm releases for failures"""
-        logger.info("Starting Helm release monitoring...")
-        # Implementation for Helm release monitoring
 
     def _send_slack_notification(self, title, message):
         """Send notification to Slack"""
@@ -289,13 +388,33 @@ class SelfHealingController:
             "pod_failures": len(self.pod_failures),
             "node_failures": len(self.node_failures),
             "helm_rollbacks": len(self.helm_releases),
+            "running": self.running,
+            "last_checks": len(self.last_check),
         }
+
+    def stop(self):
+        """Stop the controller"""
+        self.running = False
+        logger.info("Self-Healing Controller stopped")
 
 
 def main():
     """Main function to start the Self-Healing Controller"""
     controller = SelfHealingController()
-    controller.start_monitoring()
+    
+    try:
+        controller.start_monitoring()
+        
+        # Keep the main thread alive
+        while controller.running:
+            time.sleep(1)
+            
+    except KeyboardInterrupt:
+        logger.info("Received interrupt signal, shutting down...")
+        controller.stop()
+    except Exception as e:
+        logger.error(f"Unexpected error: {e}")
+        controller.stop()
 
 
 if __name__ == "__main__":
