@@ -35,7 +35,7 @@ A comprehensive Kubernetes-based self-healing infrastructure that automatically 
 
 ```bash
 # Clone the repository
-git clone https://github.com/your-username/self-healing-infrastructure-chaos-engineering.git
+git clone https://github.com/justrunme/self-healing-infrastructure-chaos-engineering.git
 cd self-healing-infrastructure-chaos-engineering
 
 # Deploy with Terraform
@@ -322,12 +322,6 @@ minikube delete
 ## 📄 License
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
-
-## 🆘 Support
-
-- **Issues**: [GitHub Issues](https://github.com/your-username/self-healing-infrastructure-chaos-engineering/issues)
-- **Documentation**: [Wiki](https://github.com/your-username/self-healing-infrastructure-chaos-engineering/wiki)
-- **Discussions**: [GitHub Discussions](https://github.com/your-username/self-healing-infrastructure-chaos-engineering/discussions)
 
 ---
 

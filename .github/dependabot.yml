@@ -9,9 +9,9 @@ updates:
       time: "09:00"
     open-pull-requests-limit: 10
     reviewers:
-      - "your-username"
+      - "justrunme"
     assignees:
-      - "your-username"
+      - "justrunme"
     commit-message:
       prefix: "pip"
       include: "scope"
@@ -26,9 +26,9 @@ updates:
     open-pull-requests-limit: 10
     target-branch: "develop"
     reviewers:
-      - "your-username"
+      - "justrunme"
     assignees:
-      - "your-username"
+      - "justrunme"
     commit-message:
       prefix: "pip-dev"
       include: "scope"
@@ -42,9 +42,9 @@ updates:
       time: "09:00"
     open-pull-requests-limit: 10
     reviewers:
-      - "your-username"
+      - "justrunme"
     assignees:
-      - "your-username"
+      - "justrunme"
     commit-message:
       prefix: "github-actions"
       include: "scope"
@@ -58,9 +58,9 @@ updates:
       time: "09:00"
     open-pull-requests-limit: 10
     reviewers:
-      - "your-username"
+      - "justrunme"
     assignees:
-      - "your-username"
+      - "justrunme"
     commit-message:
       prefix: "docker"
       include: "scope" 

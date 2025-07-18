@@ -3,7 +3,7 @@ repository:
   # General settings
   name: self-healing-infrastructure-chaos-engineering
   description: "Self-Healing Infrastructure with Chaos Engineering for Kubernetes"
-  homepage: "https://github.com/your-username/self-healing-infrastructure-chaos-engineering"
+  homepage: "https://github.com/justrunme/self-healing-infrastructure-chaos-engineering"
   topics: "kubernetes,chaos-engineering,self-healing,prometheus,terraform,helm,devops,sre"
   private: false
   has_issues: true
