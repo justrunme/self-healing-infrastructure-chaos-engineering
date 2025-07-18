@@ -143,11 +143,6 @@ jobs:
           sudo install minikube-linux-amd64 /usr/local/bin/minikube
           minikube start --driver=docker --cpus=2 --memory=4096
 
-      - name: Setup Terraform
-        uses: hashicorp/setup-terraform@v2
-        with:
-          terraform_version: "1.0"
-
       - name: Initialize and validate Terraform
         run: |
           cd terraform
