@@ -143,4 +143,4 @@ roleRef:
 subjects:
   - kind: ServiceAccount
     name: self-healing-controller
-    namespace: self-healing 
+    namespace: self-healing
