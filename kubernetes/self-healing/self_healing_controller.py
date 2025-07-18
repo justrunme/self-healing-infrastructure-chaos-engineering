@@ -77,6 +77,7 @@ class SelfHealingController:
 
     def _start_pod_monitoring(self):
         """Start pod monitoring in a separate thread"""
+
         def monitor_pods():
             while self.running:
                 try:
@@ -92,6 +93,7 @@ class SelfHealingController:
 
     def _start_node_monitoring(self):
         """Start node monitoring in a separate thread"""
+
         def monitor_nodes():
             while self.running:
                 try:
@@ -112,20 +114,20 @@ class SelfHealingController:
 
         app = Flask(__name__)
 
-        @app.route('/health')
+        @app.route("/health")
         def health():
             return jsonify({"status": "healthy", "running": self.running})
 
-        @app.route('/ready')
+        @app.route("/ready")
         def ready():
             return jsonify({"status": "ready", "running": self.running})
 
-        @app.route('/metrics')
+        @app.route("/metrics")
         def metrics():
             return jsonify(self.get_metrics())
 
         def run_server():
-            app.run(host='0.0.0.0', port=8080)
+            app.run(host="0.0.0.0", port=8080)
 
         thread = threading.Thread(target=run_server, daemon=True)
         thread.start()
@@ -248,7 +250,7 @@ class SelfHealingController:
             self.k8s_client.delete_namespaced_pod(
                 name=pod.metadata.name,
                 namespace=pod.metadata.namespace,
-                grace_period_seconds=0  # Force delete immediately
+                grace_period_seconds=0,  # Force delete immediately
             )
             logger.info(f"Restarted pod: {pod.metadata.namespace}/{pod.metadata.name}")
         except ApiException as e:
@@ -353,8 +355,7 @@ class SelfHealingController:
         try:
             # Annotate node to trigger Kured reboot
             self.k8s_client.patch_node(
-                name=node.metadata.name,
-                body={"metadata": {"annotations": {"weave.works/kured-node-lock": ""}}}
+                name=node.metadata.name, body={"metadata": {"annotations": {"weave.works/kured-node-lock": ""}}}
             )
             logger.info(f"Triggered reboot for node: {node.metadata.name}")
         except ApiException as e:
