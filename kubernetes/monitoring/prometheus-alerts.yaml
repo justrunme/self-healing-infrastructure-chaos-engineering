@@ -87,4 +87,4 @@ data:
               severity: warning
             annotations:
               summary: "Low disk space on {{ $labels.instance }}"
-              description: "Node {{ $labels.instance }} has less than 10% disk space available" 
+              description: "Node {{ $labels.instance }} has less than 10% disk space available"
