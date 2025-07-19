@@ -31,6 +31,10 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Setup cache directories
+        run: |
+          mkdir -p ~/.cache/pip
+          mkdir -p ~/.terraform.d/plugin-cache
       - name: Cache dependencies
         uses: actions/cache@v3
         with:
@@ -61,6 +65,8 @@ jobs:
         if: matrix.tool == 'terraform'
         run: |
           cd terraform
+          # Create plugin cache directory if it doesn't exist
+          mkdir -p "$HOME/.terraform.d/plugin-cache"
           terraform init -plugin-dir="$HOME/.terraform.d/plugin-cache"
           terraform validate
 
@@ -119,6 +125,9 @@ jobs:
           echo "Current KUBE_CONFIG_PATH: $KUBE_CONFIG_PATH"
 
       # 3.2 Cache Terraform plugins
+      - name: Setup Terraform cache
+        run: |
+          mkdir -p ~/.terraform.d/plugin-cache
       - uses: actions/cache@v3
         with:
           path: ~/.terraform.d/plugin-cache
@@ -128,6 +137,8 @@ jobs:
       - name: Terraform Init & Apply
         run: |
           cd terraform
+          # Create plugin cache directory if it doesn't exist
+          mkdir -p "$HOME/.terraform.d/plugin-cache"
           terraform init -plugin-dir="$HOME/.terraform.d/plugin-cache"
           terraform plan -var="ci_cd_mode=false" -out=tfplan
           terraform apply -auto-approve tfplan
