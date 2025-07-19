@@ -240,6 +240,12 @@ jobs:
 
       - name: Deploy infrastructure with Terraform
         run: |
+          echo "Current KUBECONFIG: $KUBECONFIG"
+          echo "Kubectl config current-context:"
+          kubectl config current-context
+          echo "Kubectl config view:"
+          kubectl config view --minify
+          
           cd terraform
           terraform plan -var="ci_cd_mode=false" -out=tfplan
           terraform apply tfplan
@@ -404,6 +410,12 @@ jobs:
           cd ../..
 
           # Deploy infrastructure with Terraform
+          echo "Current KUBECONFIG: $KUBECONFIG"
+          echo "Kubectl config current-context:"
+          kubectl config current-context
+          echo "Kubectl config view:"
+          kubectl config view --minify
+          
           cd terraform
           terraform init
           terraform plan -var="ci_cd_mode=false" -out=tfplan
@@ -549,6 +561,12 @@ jobs:
           cd ../..
 
           # Deploy infrastructure with Terraform
+          echo "Current KUBECONFIG: $KUBECONFIG"
+          echo "Kubectl config current-context:"
+          kubectl config current-context
+          echo "Kubectl config view:"
+          kubectl config view --minify
+          
           cd terraform
           terraform init
           terraform plan -var="ci_cd_mode=false" -out=tfplan
