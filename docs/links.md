@@ -210,8 +210,8 @@
 - **[Pull Requests](https://github.com/justrunme/self-healing-infrastructure-chaos-engineering/pulls)** - Submit contributions
 
 ### Development Setup
-- **[README](README.md)** - Project overview and setup
-- **[Quick Start](QUICKSTART.md)** - Quick start guide
+- **[README](https://github.com/justrunme/self-healing-infrastructure-chaos-engineering/blob/main/README.md)** - Project overview and setup
+- **[Quick Start](https://github.com/justrunme/self-healing-infrastructure-chaos-engineering/blob/main/QUICKSTART.md)** - Quick start guide
 - **[Architecture](architecture/overview.md)** - System architecture
 - **[Self-Healing](self-healing/logic.md)** - Self-healing documentation
 

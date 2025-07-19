@@ -365,19 +365,19 @@ Access the live demo environment to explore the system interactively:
 
 Watch video demonstrations of key features:
 
-- **System Overview**: [Watch Video](videos/system-overview.mp4)
-- **Chaos Engineering**: [Watch Video](videos/chaos-engineering.mp4)
-- **Self-Healing**: [Watch Video](videos/self-healing.mp4)
-- **CI/CD Pipeline**: [Watch Video](videos/cicd-pipeline.mp4)
+- **System Overview**: [Coming Soon](https://github.com/justrunme/self-healing-infrastructure-chaos-engineering/issues)
+- **Chaos Engineering**: [Coming Soon](https://github.com/justrunme/self-healing-infrastructure-chaos-engineering/issues)
+- **Self-Healing**: [Coming Soon](https://github.com/justrunme/self-healing-infrastructure-chaos-engineering/issues)
+- **CI/CD Pipeline**: [Coming Soon](https://github.com/justrunme/self-healing-infrastructure-chaos-engineering/issues)
 
 ### 3. Interactive Tutorials
 
 Step-by-step interactive tutorials:
 
-- **Getting Started**: [Start Tutorial](tutorials/getting-started.md)
-- **Chaos Experiments**: [Start Tutorial](tutorials/chaos-experiments.md)
-- **Monitoring Setup**: [Start Tutorial](tutorials/monitoring-setup.md)
-- **Troubleshooting**: [Start Tutorial](tutorials/troubleshooting.md)
+- **Getting Started**: [Documentation](architecture/overview.md)
+- **Chaos Experiments**: [Documentation](chaos-engineering/overview.md)
+- **Monitoring Setup**: [Documentation](monitoring/prometheus.md)
+- **Troubleshooting**: [Documentation](self-healing/logic.md)
 
 ## Screenshot Guidelines
 
