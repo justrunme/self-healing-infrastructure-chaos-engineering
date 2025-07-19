@@ -230,15 +230,21 @@ jobs:
         with:
           version: 'latest'
 
+      - name: Setup Minikube
+        run: |
+          curl -LO https://storage.googleapis.com/minikube/releases/latest/minikube-linux-amd64
+          sudo install minikube-linux-amd64 /usr/local/bin/minikube
+          minikube start --driver=docker --cpus=2 --memory=4096
+
       - name: Wait for system to be ready
         run: |
           sleep 30
-          kubectl get pods --all-namespaces
+          minikube kubectl -- get pods --all-namespaces
 
       - name: Test Self-Healing Controller health
         run: |
           # Start port-forward in background
-          kubectl port-forward -n self-healing svc/self-healing-controller 8081:8080 &
+          minikube kubectl -- port-forward -n self-healing svc/self-healing-controller 8081:8080 &
           PF_PID=$!
 
           # Wait for port-forward to be ready
@@ -258,13 +264,13 @@ jobs:
           echo "Creating a failing pod to test self-healing..."
 
           # Create a pod that will fail
-          kubectl run test-healing-pod --image=busybox --command -- /bin/sh -c "sleep 3 && exit 1" -n test-app
+          minikube kubectl -- run test-healing-pod --image=busybox --command -- /bin/sh -c "sleep 3 && exit 1" -n test-app
 
           # Wait for the pod to fail and be detected
           sleep 15
 
           # Check if the pod was handled by the self-healing controller
-          pod_status=$(kubectl get pod test-healing-pod -n test-app -o jsonpath='{.status.phase}' 2>/dev/null || echo "NotFound")
+          pod_status=$(minikube kubectl -- get pod test-healing-pod -n test-app -o jsonpath='{.status.phase}' 2>/dev/null || echo "NotFound")
           if [ "$pod_status" = "NotFound" ]; then
             echo "✅ Self-Healing Controller successfully detected and handled failing pod"
           else
@@ -273,20 +279,20 @@ jobs:
           fi
 
           # Clean up test pod
-          kubectl delete pod test-healing-pod -n test-app --ignore-not-found=true
+          minikube kubectl -- delete pod test-healing-pod -n test-app --ignore-not-found=true
 
       - name: Test crash looping detection
         run: |
           echo "Testing crash looping detection..."
 
           # Create a pod that will crash loop
-          kubectl run test-crash-pod --image=busybox --command -- /bin/sh -c "exit 1" -n test-app
+          minikube kubectl -- run test-crash-pod --image=busybox --command -- /bin/sh -c "exit 1" -n test-app
 
           # Wait for crash looping to be detected
           sleep 20
 
           # Check if the pod was handled
-          pod_status=$(kubectl get pod test-crash-pod -n test-app -o jsonpath='{.status.phase}' 2>/dev/null || echo "NotFound")
+          pod_status=$(minikube kubectl -- get pod test-crash-pod -n test-app -o jsonpath='{.status.phase}' 2>/dev/null || echo "NotFound")
           if [ "$pod_status" = "NotFound" ]; then
             echo "✅ Self-Healing Controller successfully detected crash looping pod"
           else
@@ -295,7 +301,7 @@ jobs:
           fi
 
           # Clean up
-          kubectl delete pod test-crash-pod -n test-app --ignore-not-found=true
+          minikube kubectl -- delete pod test-crash-pod -n test-app --ignore-not-found=true
 
   # Job 5: Monitoring and Dashboard Tests
   monitoring-test:
