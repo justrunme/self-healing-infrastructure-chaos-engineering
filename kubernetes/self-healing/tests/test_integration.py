@@ -90,13 +90,7 @@ class TestSelfHealingInfrastructure(unittest.TestCase):
 
     def test_namespaces_exist(self):
         """Test that all required namespaces exist"""
-        required_namespaces = [
-            "self-healing",
-            "test-app",
-            "monitoring",
-            "chaos-engineering",
-            "kured"
-        ]
+        required_namespaces = ["self-healing", "test-app", "monitoring", "chaos-engineering", "kured"]
 
         namespaces = self.k8s_client.list_namespace()
         namespace_names = [ns.metadata.name for ns in namespaces.items]
@@ -107,62 +101,42 @@ class TestSelfHealingInfrastructure(unittest.TestCase):
     def test_self_healing_controller_pod_running(self):
         """Test that Self-Healing Controller pod is running"""
         pods = self.k8s_client.list_namespaced_pod(
-            namespace="self-healing",
-            label_selector="app=self-healing-controller"
+            namespace="self-healing", label_selector="app=self-healing-controller"
         )
 
         self.assertGreater(len(pods.items), 0, "No Self-Healing Controller pods found")
 
         for pod in pods.items:
-            self.assertEqual(
-                pod.status.phase, "Running",
-                f"Pod {pod.metadata.name} is not running"
-            )
+            self.assertEqual(pod.status.phase, "Running", f"Pod {pod.metadata.name} is not running")
 
     def test_test_application_pods_running(self):
         """Test that Test Application pods are running"""
-        pods = self.k8s_client.list_namespaced_pod(
-            namespace="test-app",
-            label_selector="app=test-app"
-        )
+        pods = self.k8s_client.list_namespaced_pod(namespace="test-app", label_selector="app=test-app")
 
         self.assertGreater(len(pods.items), 0, "No Test Application pods found")
 
         for pod in pods.items:
-            self.assertEqual(
-                pod.status.phase, "Running",
-                f"Pod {pod.metadata.name} is not running"
-            )
+            self.assertEqual(pod.status.phase, "Running", f"Pod {pod.metadata.name} is not running")
 
     def test_prometheus_pods_running(self):
         """Test that Prometheus pods are running"""
         pods = self.k8s_client.list_namespaced_pod(
-            namespace="monitoring",
-            label_selector="app.kubernetes.io/name=prometheus"
+            namespace="monitoring", label_selector="app.kubernetes.io/name=prometheus"
         )
 
         self.assertGreater(len(pods.items), 0, "No Prometheus pods found")
 
         for pod in pods.items:
-            self.assertEqual(
-                pod.status.phase, "Running",
-                f"Pod {pod.metadata.name} is not running"
-            )
+            self.assertEqual(pod.status.phase, "Running", f"Pod {pod.metadata.name} is not running")
 
     def test_chaos_mesh_pods_running(self):
         """Test that Chaos Mesh pods are running"""
-        pods = self.k8s_client.list_namespaced_pod(
-            namespace="chaos-engineering",
-            label_selector="app=chaos-mesh"
-        )
+        pods = self.k8s_client.list_namespaced_pod(namespace="chaos-engineering", label_selector="app=chaos-mesh")
 
         self.assertGreater(len(pods.items), 0, "No Chaos Mesh pods found")
 
         for pod in pods.items:
-            self.assertEqual(
-                pod.status.phase, "Running",
-                f"Pod {pod.metadata.name} is not running"
-            )
+            self.assertEqual(pod.status.phase, "Running", f"Pod {pod.metadata.name} is not running")
 
     def test_services_exist(self):
         """Test that all required services exist"""
@@ -172,123 +146,91 @@ class TestSelfHealingInfrastructure(unittest.TestCase):
             ("monitoring", "prometheus-kube-prometheus-prometheus"),
             ("monitoring", "prometheus-grafana"),
             ("monitoring", "prometheus-kube-prometheus-alertmanager"),
-            ("chaos-engineering", "chaos-mesh-controller-manager")
+            ("chaos-engineering", "chaos-mesh-controller-manager"),
         ]
 
         for namespace, service_name in required_services:
             services = self.k8s_client.list_namespaced_service(
-                namespace=namespace,
-                field_selector=f"metadata.name={service_name}"
+                namespace=namespace, field_selector=f"metadata.name={service_name}"
             )
-            self.assertGreater(
-                len(services.items), 0,
-                f"Service {service_name} not found in namespace {namespace}"
-            )
+            self.assertGreater(len(services.items), 0, f"Service {service_name} not found in namespace {namespace}")
 
     def test_configmaps_exist(self):
         """Test that all required ConfigMaps exist"""
         required_configmaps = [
             ("self-healing", "self-healing-config"),
             ("monitoring", "prometheus-alerts"),
-            ("monitoring", "self-healing-dashboard")
+            ("monitoring", "self-healing-dashboard"),
         ]
 
         for namespace, configmap_name in required_configmaps:
             configmaps = self.k8s_client.list_namespaced_config_map(
-                namespace=namespace,
-                field_selector=f"metadata.name={configmap_name}"
+                namespace=namespace, field_selector=f"metadata.name={configmap_name}"
             )
             self.assertGreater(
-                len(configmaps.items), 0,
-                f"ConfigMap {configmap_name} not found in namespace {namespace}"
+                len(configmaps.items), 0, f"ConfigMap {configmap_name} not found in namespace {namespace}"
             )
 
     def test_secrets_exist(self):
         """Test that all required Secrets exist"""
-        required_secrets = [
-            ("monitoring", "slack-secret"),
-            ("self-healing", "self-healing-secret")
-        ]
+        required_secrets = [("monitoring", "slack-secret"), ("self-healing", "self-healing-secret")]
 
         for namespace, secret_name in required_secrets:
             secrets = self.k8s_client.list_namespaced_secret(
-                namespace=namespace,
-                field_selector=f"metadata.name={secret_name}"
+                namespace=namespace, field_selector=f"metadata.name={secret_name}"
             )
-            self.assertGreater(
-                len(secrets.items), 0,
-                f"Secret {secret_name} not found in namespace {namespace}"
-            )
+            self.assertGreater(len(secrets.items), 0, f"Secret {secret_name} not found in namespace {namespace}")
 
     def test_network_policies_exist(self):
         """Test that Network Policies exist"""
-        network_policies = self.k8s_client.list_namespaced_network_policy(
-            namespace="self-healing"
-        )
-        self.assertGreater(
-            len(network_policies.items), 0,
-            "No Network Policies found in self-healing namespace"
-        )
+        network_policies = self.k8s_client.list_namespaced_network_policy(namespace="self-healing")
+        self.assertGreater(len(network_policies.items), 0, "No Network Policies found in self-healing namespace")
 
     def test_resource_limits_set(self):
         """Test that resource limits are set on pods"""
         pods = self.k8s_client.list_namespaced_pod(
-            namespace="self-healing",
-            label_selector="app=self-healing-controller"
+            namespace="self-healing", label_selector="app=self-healing-controller"
         )
 
         for pod in pods.items:
             for container in pod.spec.containers:
                 self.assertIsNotNone(
-                    container.resources.limits,
-                    f"Resource limits not set for container {container.name}"
+                    container.resources.limits, f"Resource limits not set for container {container.name}"
                 )
                 self.assertIsNotNone(
-                    container.resources.requests,
-                    f"Resource requests not set for container {container.name}"
+                    container.resources.requests, f"Resource requests not set for container {container.name}"
                 )
 
     def test_health_checks_configured(self):
         """Test that health checks are configured"""
         pods = self.k8s_client.list_namespaced_pod(
-            namespace="self-healing",
-            label_selector="app=self-healing-controller"
+            namespace="self-healing", label_selector="app=self-healing-controller"
         )
 
         for pod in pods.items:
             for container in pod.spec.containers:
                 self.assertIsNotNone(
-                    container.liveness_probe,
-                    f"Liveness probe not configured for container {container.name}"
+                    container.liveness_probe, f"Liveness probe not configured for container {container.name}"
                 )
                 self.assertIsNotNone(
-                    container.readiness_probe,
-                    f"Readiness probe not configured for container {container.name}"
+                    container.readiness_probe, f"Readiness probe not configured for container {container.name}"
                 )
 
     def test_security_context_configured(self):
         """Test that security context is configured"""
         pods = self.k8s_client.list_namespaced_pod(
-            namespace="self-healing",
-            label_selector="app=self-healing-controller"
+            namespace="self-healing", label_selector="app=self-healing-controller"
         )
 
         for pod in pods.items:
-            self.assertIsNotNone(
-                pod.spec.security_context,
-                "Security context not configured for pod"
-            )
+            self.assertIsNotNone(pod.spec.security_context, "Security context not configured for pod")
 
     def test_backup_cronjob_exists(self):
         """Test that backup CronJob exists"""
         cronjobs = self.k8s_client.list_namespaced_cron_job(
-            namespace="monitoring",
-            field_selector="metadata.name=infrastructure-backup"
+            namespace="monitoring", field_selector="metadata.name=infrastructure-backup"
         )
-        self.assertGreater(
-            len(cronjobs.items), 0,
-            "Backup CronJob not found"
-        )
+        self.assertGreater(len(cronjobs.items), 0, "Backup CronJob not found")
 
     def test_chaos_experiments_exist(self):
         """Test that Chaos Experiments exist"""

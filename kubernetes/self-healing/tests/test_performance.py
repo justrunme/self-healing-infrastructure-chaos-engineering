@@ -30,6 +30,7 @@ class TestSelfHealingPerformance(unittest.TestCase):
 
     def test_health_endpoint_performance(self):
         """Test health endpoint performance under load"""
+
         def make_request():
             start_time = time.time()
             try:
@@ -38,16 +39,11 @@ class TestSelfHealingPerformance(unittest.TestCase):
                 return {
                     "status_code": response.status_code,
                     "response_time": end_time - start_time,
-                    "success": response.status_code == 200
+                    "success": response.status_code == 200,
                 }
             except Exception as e:
                 end_time = time.time()
-                return {
-                    "status_code": None,
-                    "response_time": end_time - start_time,
-                    "success": False,
-                    "error": str(e)
-                }
+                return {"status_code": None, "response_time": end_time - start_time, "success": False, "error": str(e)}
 
         # Test with 10 concurrent requests
         with concurrent.futures.ThreadPoolExecutor(max_workers=10) as executor:
@@ -64,6 +60,7 @@ class TestSelfHealingPerformance(unittest.TestCase):
 
     def test_metrics_endpoint_performance(self):
         """Test metrics endpoint performance under load"""
+
         def make_request():
             start_time = time.time()
             try:
@@ -72,16 +69,11 @@ class TestSelfHealingPerformance(unittest.TestCase):
                 return {
                     "status_code": response.status_code,
                     "response_time": end_time - start_time,
-                    "success": response.status_code == 200
+                    "success": response.status_code == 200,
                 }
             except Exception as e:
                 end_time = time.time()
-                return {
-                    "status_code": None,
-                    "response_time": end_time - start_time,
-                    "success": False,
-                    "error": str(e)
-                }
+                return {"status_code": None, "response_time": end_time - start_time, "success": False, "error": str(e)}
 
         # Test with 5 concurrent requests
         with concurrent.futures.ThreadPoolExecutor(max_workers=5) as executor:
@@ -97,6 +89,7 @@ class TestSelfHealingPerformance(unittest.TestCase):
 
     def test_prometheus_query_performance(self):
         """Test Prometheus query performance"""
+
         def make_query():
             start_time = time.time()
             try:
@@ -105,16 +98,11 @@ class TestSelfHealingPerformance(unittest.TestCase):
                 return {
                     "status_code": response.status_code,
                     "response_time": end_time - start_time,
-                    "success": response.status_code == 200
+                    "success": response.status_code == 200,
                 }
             except Exception as e:
                 end_time = time.time()
-                return {
-                    "status_code": None,
-                    "response_time": end_time - start_time,
-                    "success": False,
-                    "error": str(e)
-                }
+                return {"status_code": None, "response_time": end_time - start_time, "success": False, "error": str(e)}
 
         # Test with 5 concurrent queries
         with concurrent.futures.ThreadPoolExecutor(max_workers=5) as executor:
@@ -130,43 +118,27 @@ class TestSelfHealingPerformance(unittest.TestCase):
 
     def test_pod_creation_performance(self):
         """Test pod creation performance"""
+
         def create_test_pod(pod_name):
             start_time = time.time()
             try:
                 pod = client.V1Pod(
-                    metadata=client.V1ObjectMeta(
-                        name=f"test-pod-{pod_name}",
-                        namespace="test-app"
-                    ),
+                    metadata=client.V1ObjectMeta(name=f"test-pod-{pod_name}", namespace="test-app"),
                     spec=client.V1PodSpec(
                         containers=[
-                            client.V1Container(
-                                name="test-container",
-                                image="busybox:1.35",
-                                command=["sleep", "30"]
-                            )
+                            client.V1Container(name="test-container", image="busybox:1.35", command=["sleep", "30"])
                         ],
-                        restart_policy="Never"
-                    )
+                        restart_policy="Never",
+                    ),
                 )
 
-                self.k8s_client.create_namespaced_pod(
-                    namespace="test-app",
-                    body=pod
-                )
+                self.k8s_client.create_namespaced_pod(namespace="test-app", body=pod)
 
                 end_time = time.time()
-                return {
-                    "success": True,
-                    "creation_time": end_time - start_time
-                }
+                return {"success": True, "creation_time": end_time - start_time}
             except Exception as e:
                 end_time = time.time()
-                return {
-                    "success": False,
-                    "creation_time": end_time - start_time,
-                    "error": str(e)
-                }
+                return {"success": False, "creation_time": end_time - start_time, "error": str(e)}
 
         # Test creating 3 pods concurrently
         with concurrent.futures.ThreadPoolExecutor(max_workers=3) as executor:
@@ -176,10 +148,7 @@ class TestSelfHealingPerformance(unittest.TestCase):
         # Clean up test pods
         for i in range(3):
             try:
-                self.k8s_client.delete_namespaced_pod(
-                    name=f"test-pod-{i}",
-                    namespace="test-app"
-                )
+                self.k8s_client.delete_namespaced_pod(name=f"test-pod-{i}", namespace="test-app")
             except Exception:
                 pass
 
@@ -246,10 +215,7 @@ class TestSelfHealingPerformance(unittest.TestCase):
     def _get_pod_memory_usage(self, pod_name, namespace):
         """Get pod memory usage in MB"""
         try:
-            pods = self.k8s_client.list_namespaced_pod(
-                namespace=namespace,
-                field_selector=f"metadata.name={pod_name}"
-            )
+            pods = self.k8s_client.list_namespaced_pod(namespace=namespace, field_selector=f"metadata.name={pod_name}")
             if pods.items:
                 # In a real implementation, this would query metrics API
                 # For now, return a mock value
@@ -261,10 +227,7 @@ class TestSelfHealingPerformance(unittest.TestCase):
     def _get_pod_cpu_usage(self, pod_name, namespace):
         """Get pod CPU usage in millicores"""
         try:
-            pods = self.k8s_client.list_namespaced_pod(
-                namespace=namespace,
-                field_selector=f"metadata.name={pod_name}"
-            )
+            pods = self.k8s_client.list_namespaced_pod(namespace=namespace, field_selector=f"metadata.name={pod_name}")
             if pods.items:
                 # In a real implementation, this would query metrics API
                 # For now, return a mock value
@@ -275,29 +238,22 @@ class TestSelfHealingPerformance(unittest.TestCase):
 
     def test_concurrent_pod_failures(self):
         """Test handling of concurrent pod failures"""
+
         def create_failing_pod(pod_name):
             try:
                 pod = client.V1Pod(
-                    metadata=client.V1ObjectMeta(
-                        name=f"failing-pod-{pod_name}",
-                        namespace="test-app"
-                    ),
+                    metadata=client.V1ObjectMeta(name=f"failing-pod-{pod_name}", namespace="test-app"),
                     spec=client.V1PodSpec(
                         containers=[
                             client.V1Container(
-                                name="failing-container",
-                                image="busybox:1.35",
-                                command=["sh", "-c", "exit 1"]
+                                name="failing-container", image="busybox:1.35", command=["sh", "-c", "exit 1"]
                             )
                         ],
-                        restart_policy="Never"
-                    )
+                        restart_policy="Never",
+                    ),
                 )
 
-                self.k8s_client.create_namespaced_pod(
-                    namespace="test-app",
-                    body=pod
-                )
+                self.k8s_client.create_namespaced_pod(namespace="test-app", body=pod)
                 return True
             except Exception:
                 return False
@@ -310,10 +266,7 @@ class TestSelfHealingPerformance(unittest.TestCase):
         # Clean up
         for i in range(3):
             try:
-                self.k8s_client.delete_namespaced_pod(
-                    name=f"failing-pod-{i}",
-                    namespace="test-app"
-                )
+                self.k8s_client.delete_namespaced_pod(name=f"failing-pod-{i}", namespace="test-app")
             except Exception:
                 pass
 

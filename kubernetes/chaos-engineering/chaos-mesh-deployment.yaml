@@ -1,0 +1,55 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: chaos-mesh-controller-manager
+  namespace: chaos-engineering
+  labels:
+    app: chaos-mesh
+    component: controller-manager
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: chaos-mesh
+      component: controller-manager
+  template:
+    metadata:
+      labels:
+        app: chaos-mesh
+        component: controller-manager
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "10080"
+    spec:
+      serviceAccountName: chaos-mesh-controller-manager
+      containers:
+        - name: chaos-mesh-controller-manager
+          image: ghcr.io/chaos-mesh/chaos-mesh:v2.6.0
+          imagePullPolicy: IfNotPresent
+          command:
+            - /usr/local/bin/chaos-controller-manager
+          args:
+            - --metrics-addr=:10080
+            - --enable-leader-election
+            - --leader-election-namespace=chaos-engineering
+          ports:
+            - containerPort: 10080
+              name: metrics
+          env:
+            - name: WATCH_NAMESPACE
+              value: ""
+            - name: POD_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.name
+            - name: OPERATOR_NAMESPACE
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.namespace
+          resources:
+            limits:
+              cpu: 500m
+              memory: 512Mi
+            requests:
+              cpu: 250m
+              memory: 256Mi 

@@ -239,11 +239,19 @@ resource "helm_release" "prometheus_stack" {
 # This ensures proper deployment in CI/CD environment
 
 # Развертывание Chaos Mesh
-resource "kubernetes_manifest" "chaos_mesh" {
-  manifest = yamldecode(file("${path.module}/../kubernetes/chaos-engineering/chaos-mesh.yaml"))
+resource "kubernetes_manifest" "chaos_mesh_namespace" {
+  manifest = yamldecode(file("${path.module}/../kubernetes/chaos-engineering/chaos-mesh-namespace.yaml"))
   
   depends_on = [
     kubernetes_namespace.chaos_engineering
+  ]
+}
+
+resource "kubernetes_manifest" "chaos_mesh_deployment" {
+  manifest = yamldecode(file("${path.module}/../kubernetes/chaos-engineering/chaos-mesh-deployment.yaml"))
+  
+  depends_on = [
+    kubernetes_manifest.chaos_mesh_namespace
   ]
 }
 
@@ -257,13 +265,45 @@ resource "kubernetes_manifest" "chaos_experiments" {
   manifest = yamldecode(each.value)
   
   depends_on = [
-    kubernetes_manifest.chaos_mesh
+    kubernetes_manifest.chaos_mesh_deployment
   ]
 }
 
-# Развертывание Backup системы
-resource "kubernetes_manifest" "backup_system" {
-  manifest = yamldecode(file("${path.module}/../kubernetes/backup/backup-cronjob.yaml"))
+# Развертывание Backup системы - разделяем на отдельные ресурсы
+resource "kubernetes_manifest" "backup_cronjob" {
+  manifest = yamldecode(split("---", file("${path.module}/../kubernetes/backup/backup-cronjob.yaml"))[0])
+  
+  depends_on = [
+    kubernetes_namespace.monitoring
+  ]
+}
+
+resource "kubernetes_manifest" "backup_service_account" {
+  manifest = yamldecode(split("---", file("${path.module}/../kubernetes/backup/backup-cronjob.yaml"))[1])
+  
+  depends_on = [
+    kubernetes_namespace.monitoring
+  ]
+}
+
+resource "kubernetes_manifest" "backup_cluster_role" {
+  manifest = yamldecode(split("---", file("${path.module}/../kubernetes/backup/backup-cronjob.yaml"))[2])
+  
+  depends_on = [
+    kubernetes_namespace.monitoring
+  ]
+}
+
+resource "kubernetes_manifest" "backup_cluster_role_binding" {
+  manifest = yamldecode(split("---", file("${path.module}/../kubernetes/backup/backup-cronjob.yaml"))[3])
+  
+  depends_on = [
+    kubernetes_namespace.monitoring
+  ]
+}
+
+resource "kubernetes_manifest" "backup_pvc" {
+  manifest = yamldecode(split("---", file("${path.module}/../kubernetes/backup/backup-cronjob.yaml"))[4])
   
   depends_on = [
     kubernetes_namespace.monitoring
