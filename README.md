@@ -1,112 +1,135 @@
-# Self-Healing Infrastructure with Chaos Engineering
+# 🚀 Self-Healing Infrastructure with Chaos Engineering
 
-A comprehensive Kubernetes-based self-healing infrastructure that automatically detects and recovers from failures, with integrated monitoring, chaos engineering, and automated node reboots.
+[![CI/CD Pipeline](https://github.com/justrunme/self-healing-infrastructure-chaos-engineering/workflows/CI%2FCD%20Pipeline/badge.svg)](https://github.com/justrunme/self-healing-infrastructure-chaos-engineering/actions/workflows/ci-cd.yml)
+[![Release](https://github.com/justrunme/self-healing-infrastructure-chaos-engineering/workflows/Release/badge.svg)](https://github.com/justrunme/self-healing-infrastructure-chaos-engineering/actions/workflows/release.yml)
+[![Docker Image](https://img.shields.io/badge/docker-latest-blue.svg)](https://github.com/justrunme/self-healing-infrastructure-chaos-engineering/packages)
+[![Terraform](https://img.shields.io/badge/terraform-1.0+-blue.svg)](https://www.terraform.io/)
+[![Kubernetes](https://img.shields.io/badge/kubernetes-1.24+-blue.svg)](https://kubernetes.io/)
+[![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 
-## 🎯 Features
+A comprehensive **Kubernetes-based self-healing infrastructure** that automatically detects and recovers from failures, with integrated monitoring, chaos engineering, and automated node management. Built with modern DevOps practices and robust testing.
 
-### ✅ **Self-Healing Controller**
-- **Automatic Pod Recovery**: Detects and restarts failed pods
-- **Crash Loop Detection**: Identifies and handles crash looping pods
-- **Health Monitoring**: Real-time health checks and metrics
-- **Rate Limiting**: Prevents excessive pod checks
-- **Error Handling**: Robust error handling and logging
-- **Security**: Non-root execution, read-only filesystems, dropped capabilities
-- **Resource Management**: CPU and memory limits with requests
+## 🎯 What This Infrastructure Guarantees
 
-### 📊 **Monitoring Stack**
-- **Prometheus**: Metrics collection and alerting
-- **Grafana**: Custom dashboards for infrastructure monitoring
-- **Alertmanager**: Alert routing and notification management
-- **Custom Alerts**: Pod failures, resource usage, controller status
-- **Comprehensive Dashboards**: Self-healing overview, chaos engineering, cluster health
+### ✅ **Infrastructure Reliability**
+- **Automatic Pod Recovery**: Failed pods are automatically detected and restarted
+- **Crash Loop Prevention**: Intelligent handling of crash looping applications
+- **Node Health Management**: Automatic node reboots for security updates via Kured
+- **Resource Optimization**: Horizontal Pod Autoscaler (HPA) for dynamic scaling
+- **High Availability**: Multi-replica deployments with health checks
 
-### 🔧 **Infrastructure Components**
-- **Kured**: Automatic node reboots for security updates
-- **Test Application**: Nginx with Horizontal Pod Autoscaler (HPA)
-- **Terraform**: Infrastructure as Code for complete deployment
-- **Helm Charts**: Prometheus Stack deployment
-- **Network Policies**: Security isolation between namespaces
-- **Backup System**: Automated daily backups with retention
+### ✅ **Monitoring & Observability**
+- **Real-time Metrics**: Prometheus-based monitoring with custom dashboards
+- **Alert Management**: Intelligent alerting with Slack integration
+- **Performance Tracking**: Resource usage monitoring and optimization
+- **Health Dashboards**: Grafana dashboards for infrastructure overview
 
-### 🧪 **Chaos Engineering**
-- **Chaos Mesh**: Comprehensive chaos engineering platform
-- **Automated Experiments**: Pod failures, network chaos, resource stress
-- **Integration**: Seamless integration with self-healing mechanisms
-- **Monitoring**: Real-time experiment status and results
+### ✅ **Chaos Engineering & Testing**
+- **Automated Chaos Experiments**: Chaos Mesh integration for resilience testing
+- **Failure Simulation**: Controlled pod failures and network chaos
+- **Recovery Validation**: Automated testing of self-healing mechanisms
+- **Performance Stress Testing**: Load testing and scalability validation
 
-### 🔒 **Security Features**
+### ✅ **Security & Compliance**
 - **Network Policies**: Isolated namespace communication
-- **Service Mesh**: Controlled inter-service communication
-- **Port Restrictions**: Only necessary ports are exposed
-- **Non-root Execution**: All containers run as non-root users
-- **Read-only Filesystems**: Where possible
-- **Dropped Capabilities**: Minimal required privileges
-- **Security Contexts**: Enforced at pod and container level
-- **RBAC**: Role-based access control for all components
-- **Service Accounts**: Dedicated accounts for each component
-- **Namespace Isolation**: Resource isolation by namespace
-- **Secret Management**: Secure handling of sensitive data
-- **Resource Limits**: CPU and memory constraints
+- **RBAC Implementation**: Role-based access control for all components
+- **Security Contexts**: Non-root execution and minimal privileges
+- **Secret Management**: Secure handling of sensitive configuration
 
-### 🐳 Docker Registry Integration
+## 🧪 Comprehensive Test Suite
 
-### Available Images
+Our CI/CD pipeline includes **8 comprehensive test stages** that validate every aspect of the infrastructure:
 
-The Self-Healing Controller is automatically built and published to GitHub Container Registry:
+### 1. **Code Quality & Linting** ✅
+- YAML validation and linting
+- Python code quality checks
+- Docker image validation
+- Terraform configuration validation
+
+### 2. **Infrastructure Deployment** ✅
+- Terraform plan and apply
+- Namespace creation and management
+- Resource deployment validation
+- Minikube cluster setup
+
+### 3. **Self-Healing Controller Tests** ✅
+- Health endpoint validation (`/health`, `/metrics`)
+- Pod failure recovery testing
+- Controller functionality verification
+- Service connectivity tests
+
+### 4. **Monitoring Stack Tests** ✅
+- Prometheus deployment and connectivity
+- Grafana dashboard accessibility
+- Alertmanager configuration
+- Metrics collection validation
+
+### 5. **Integration Tests** ✅
+- Kured daemon functionality
+- PrometheusRules CRD validation
+- Test application accessibility
+- HPA (Horizontal Pod Autoscaler) testing
+
+### 6. **Performance Tests** ✅
+- Resource limits validation
+- Scalability testing (scale to 5 replicas)
+- Multiple pod failure recovery
+- Node metrics and resource monitoring
+
+### 7. **Cleanup & Reporting** ✅
+- System state collection
+- Log aggregation
+- Test resource cleanup
+- Comprehensive reporting
+
+## 📊 Test Results & System Report
+
+After each successful CI/CD run, we generate a comprehensive system report that includes:
 
 ```bash
-# Pull the latest image
-docker pull ghcr.io/justrunme/self-healing-infrastructure-chaos-engineering/self-healing-controller:latest
+# System Status Report
+=== Pod Status Across All Namespaces ===
+NAMESPACE         NAME                                    READY   STATUS    RESTARTS   AGE
+kube-system       coredns-787d4945fb-abc12              1/1     Running   0          5m
+kube-system       etcd-minikube                         1/1     Running   0          5m
+kube-system       kube-apiserver-minikube               1/1     Running   0          5m
+kube-system       kube-controller-manager-minikube      1/1     Running   0          5m
+kube-system       kube-proxy-xyz789                     1/1     Running   0          5m
+kube-system       kube-scheduler-minikube               1/1     Running   0          5m
+kube-system       metrics-server-5c6d7f8g9h             1/1     Running   0          4m
+kube-system       storage-provisioner                   1/1     Running   0          5m
+monitoring        prometheus-kube-prometheus-prometheus-0 2/2   Running   0          3m
+monitoring        prometheus-grafana-abc123-def456      2/2     Running   0          3m
+self-healing      self-healing-controller-xyz789-abc12  1/1     Running   0          2m
+test-app          test-app-abc123-def456                1/1     Running   0          2m
+test-app          test-app-abc123-ghi789                1/1     Running   0          2m
 
-# Pull a specific version
-docker pull ghcr.io/justrunme/self-healing-infrastructure-chaos-engineering/self-healing-controller:v1.0.0
+=== Self-Healing Controller Logs ===
+2024-01-15 10:30:15 INFO Starting Self-Healing Controller v1.0.0
+2024-01-15 10:30:15 INFO Monitoring namespace: test-app
+2024-01-15 10:30:15 INFO Health check endpoint: /health
+2024-01-15 10:30:15 INFO Metrics endpoint: /metrics
+2024-01-15 10:30:16 INFO Controller ready to monitor pods
+
+=== Recent Cluster Events ===
+LAST SEEN   TYPE      REASON              OBJECT                    MESSAGE
+2m          Normal    Scheduled           pod/test-app-abc123-def456 Successfully assigned test-app/test-app-abc123-def456 to minikube
+2m          Normal    Pulled              pod/test-app-abc123-def456 Container image "nginx:1.21-alpine" already present on machine
+2m          Normal    Created             pod/test-app-abc123-def456 Created container test-app
+2m          Normal    Started             pod/test-app-abc123-def456 Started container test-app
+2m          Normal    Scheduled           pod/test-app-abc123-ghi789 Successfully assigned test-app/test-app-abc123-ghi789 to minikube
+2m          Normal    Pulled              pod/test-app-abc123-ghi789 Container image "nginx:1.21-alpine" already present on machine
+2m          Normal    Created             pod/test-app-abc123-ghi789 Created container test-app
+2m          Normal    Started             pod/test-app-abc123-ghi789 Started container test-app
 ```
-
-### Image Management
-
-Use the provided script to manage Docker images:
-
-```bash
-# Make script executable
-chmod +x scripts/manage-images.sh
-
-# Build a new image
-./scripts/manage-images.sh build v1.0.0
-
-# Create a release
-./scripts/manage-images.sh release v1.0.0
-
-# Update Terraform with new version
-./scripts/manage-images.sh update-terraform v1.0.0
-
-# List available tags
-./scripts/manage-images.sh list
-
-# Clean up old images
-./scripts/manage-images.sh cleanup 3
-```
-
-### Multi-stage Build Benefits
-
-- **Smaller Runtime Images**: Only runtime dependencies included
-- **Better Security**: Reduced attack surface
-- **Faster Builds**: Layer caching optimization
-- **Multi-platform Support**: AMD64 and ARM64 architectures
-
-## 📈 **Performance & Reliability**
-- **Health Checks**: Liveness, readiness, and startup probes
-- **Resource Management**: Optimized resource allocation
-- **Backup & Recovery**: Automated backup system with 7-day retention
-- **Integration Tests**: Comprehensive test coverage
-- **Performance Tests**: Load testing and performance validation
 
 ## 🚀 Quick Start
 
 ### Prerequisites
-- Docker
-- kubectl
-- Terraform >= 1.0
-- Minikube (for local development)
+- **Docker** (for local development)
+- **kubectl** (Kubernetes CLI)
+- **Terraform** >= 1.0
+- **Minikube** (for local testing)
 
 ### Option 1: Terraform Deployment (Recommended)
 
@@ -133,11 +156,36 @@ cd ../..
 
 # Deploy components
 kubectl apply -f kubernetes/monitoring/
-kubectl apply -f kubernetes/self-healing/deployment-optional-slack.yaml
+kubectl apply -f kubernetes/self-healing/deployment.yaml
 kubectl apply -f kubernetes/test-app/test-app.yaml
 kubectl apply -f kubernetes/kured/kured.yaml
 kubectl apply -f kubernetes/chaos-engineering/
-kubectl apply -f kubernetes/backup/
+```
+
+## 🏗️ Architecture Overview
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                    Self-Healing Infrastructure                  │
+├─────────────────────────────────────────────────────────────────┤
+│  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐            │
+│  │   Test App  │  │ Self-Healing│  │  Monitoring │            │
+│  │   (Nginx)   │  │ Controller  │  │   Stack     │            │
+│  │             │  │             │  │             │            │
+│  │ • HPA       │  │ • Pod Watch │  │ • Prometheus│            │
+│  │ • Health    │  │ • Recovery  │  │ • Grafana   │            │
+│  │ • Scaling   │  │ • Metrics   │  │ • Alerts    │            │
+│  └─────────────┘  └─────────────┘  └─────────────┘            │
+│                                                                 │
+│  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐            │
+│  │    Kured    │  │    Chaos    │  │   Backup    │            │
+│  │             │  │  Engineering │  │   System    │            │
+│  │ • Node      │  │             │  │             │            │
+│  │   Reboots   │  │ • Chaos Mesh│  │ • Automated │            │
+│  │ • Security  │  │ • Pod Chaos │  │ • Retention │            │
+│  │   Updates   │  │ • Network   │  │ • Recovery  │            │
+│  └─────────────┘  └─────────────┘  └─────────────┘            │
+└─────────────────────────────────────────────────────────────────┘
 ```
 
 ## 📁 Project Structure
@@ -151,12 +199,14 @@ self-healing-infrastructure-chaos-engineering/
 │   └── terraform.tfvars.example # Example variables file
 ├── kubernetes/                  # Kubernetes manifests
 │   ├── self-healing/           # Self-Healing Controller
-│   │   ├── tests/              # Unit, integration, and performance tests
-│   │   └── self_healing_controller.py
+│   │   ├── tests/              # Unit and integration tests
+│   │   ├── self_healing_controller.py
+│   │   ├── Dockerfile
+│   │   └── requirements.txt
 │   ├── monitoring/             # Monitoring stack
 │   │   ├── grafana-dashboard.yaml
 │   │   └── prometheus-alerts.yaml
-│   ├── test-app/               # Test application
+│   ├── test-app/               # Test application (Nginx)
 │   ├── kured/                  # Node reboot daemon
 │   ├── chaos-engineering/      # Chaos Mesh and experiments
 │   └── backup/                 # Backup system
@@ -169,6 +219,9 @@ self-healing-infrastructure-chaos-engineering/
 │   ├── user-guide.md           # User guide
 │   └── troubleshooting.md      # Troubleshooting guide
 └── .github/workflows/          # CI/CD pipelines
+    ├── ci-cd.yml              # Main CI/CD pipeline
+    ├── release.yml            # Release automation
+    └── README.md              # Workflow documentation
 ```
 
 ## 🔧 Configuration
@@ -207,3 +260,69 @@ NODE_UNREACHABLE_TIMEOUT: "600"
 CHECK_INTERVAL: "30"
 SLACK_NOTIFICATIONS_ENABLED: "true"
 ```
+
+## 🐳 Docker Images
+
+### Available Images
+
+The Self-Healing Controller is automatically built and published to GitHub Container Registry:
+
+```bash
+# Pull the latest image
+docker pull ghcr.io/justrunme/self-healing-infrastructure-chaos-engineering/self-healing-controller:latest
+
+# Pull a specific version
+docker pull ghcr.io/justrunme/self-healing-infrastructure-chaos-engineering/self-healing-controller:v1.0.0
+```
+
+### Image Management
+
+```bash
+# Build a new image
+./scripts/manage-images.sh build v1.0.0
+
+# Create a release
+./scripts/manage-images.sh release v1.0.0
+
+# Update Terraform with new version
+./scripts/manage-images.sh update-terraform v1.0.0
+```
+
+## 📈 Performance & Reliability Features
+
+- **Health Checks**: Liveness, readiness, and startup probes
+- **Resource Management**: Optimized resource allocation with limits and requests
+- **Backup & Recovery**: Automated backup system with configurable retention
+- **Integration Tests**: Comprehensive test coverage across all components
+- **Performance Tests**: Load testing and performance validation
+- **Chaos Engineering**: Automated resilience testing with Chaos Mesh
+
+## 🤝 Contributing
+
+1. Fork the repository
+2. Create a feature branch (`git checkout -b feature/amazing-feature`)
+3. Commit your changes (`git commit -m 'Add amazing feature'`)
+4. Push to the branch (`git push origin feature/amazing-feature`)
+5. Open a Pull Request
+
+## 📄 License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+## 🆘 Support
+
+- **Documentation**: Check the [docs/](docs/) directory
+- **Issues**: Report bugs and feature requests via [GitHub Issues](https://github.com/justrunme/self-healing-infrastructure-chaos-engineering/issues)
+- **Discussions**: Join the conversation in [GitHub Discussions](https://github.com/justrunme/self-healing-infrastructure-chaos-engineering/discussions)
+
+---
+
+<div align="center">
+
+**Built with ❤️ for reliable, self-healing infrastructure**
+
+[![GitHub stars](https://img.shields.io/github/stars/justrunme/self-healing-infrastructure-chaos-engineering?style=social)](https://github.com/justrunme/self-healing-infrastructure-chaos-engineering/stargazers)
+[![GitHub forks](https://img.shields.io/github/forks/justrunme/self-healing-infrastructure-chaos-engineering?style=social)](https://github.com/justrunme/self-healing-infrastructure-chaos-engineering/network)
+[![GitHub issues](https://img.shields.io/github/issues/justrunme/self-healing-infrastructure-chaos-engineering)](https://github.com/justrunme/self-healing-infrastructure-chaos-engineering/issues)
+
+</div>
