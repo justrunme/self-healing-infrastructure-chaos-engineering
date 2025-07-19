@@ -97,4 +97,16 @@ variable "enable_chaos_experiments" {
   description = "Enable Chaos Mesh experiments deployment"
   type        = bool
   default     = false
+}
+
+variable "ci_cd_mode" {
+  description = "Enable CI/CD mode (skip actual deployments)"
+  type        = bool
+  default     = false
+}
+
+variable "kubernetes_config_path" {
+  description = "Path to Kubernetes config file"
+  type        = string
+  default     = "~/.kube/config"
 } 
