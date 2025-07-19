@@ -169,6 +169,10 @@ jobs:
           cd terraform
           terraform output
 
+          echo "Checking kubectl context..."
+          kubectl config current-context
+          kubectl cluster-info
+
           echo "Checking all namespaces..."
           kubectl get namespaces | grep -E "(monitoring|chaos-engineering|self-healing|kured|test-app)"
 
@@ -180,15 +184,20 @@ jobs:
 
       - name: Wait for components to be ready
         run: |
+          echo "Setting up kubectl context..."
+          kubectl config set-cluster local --server=https://kubernetes.default.svc
+          kubectl config set-context local --cluster=local
+          kubectl config use-context local
+          
           echo "Waiting for Self-Healing Controller..."
           kubectl wait --for=condition=ready pod -l app=self-healing-controller -n self-healing --timeout=600s
-
+          
           echo "Waiting for test application..."
           kubectl wait --for=condition=ready pod -l app=test-app -n test-app --timeout=300s
-
+          
           echo "Waiting for Prometheus stack..."
           kubectl wait --for=condition=ready pod -l app.kubernetes.io/name=prometheus -n monitoring --timeout=300s
-
+          
           echo "Deploying Kured..."
           latest=$(curl -s https://api.github.com/repos/kubereboot/kured/releases | jq -r '.[0].tag_name')
           echo "Latest Kured version: $latest"
@@ -208,21 +217,6 @@ jobs:
           
           echo "Checking Kured pods (may be 0 if no nodes need reboot)..."
           kubectl get pods -n kube-system | grep kured || echo "No Kured pods found"
-
-      - name: Verify all components
-        run: |
-          echo "Checking all components..."
-          kubectl get pods --all-namespaces | grep -E "(prometheus|alertmanager|self-healing|test-app)"
-
-          echo "Checking services..."
-          kubectl get svc --all-namespaces | grep -E "(prometheus|alertmanager|self-healing|test-app)"
-          
-          echo "Checking Kured status..."
-          kubectl get daemonset --all-namespaces | grep kured || echo "No Kured DaemonSet found"
-          kubectl get pods --all-namespaces | grep kured || echo "No Kured pods found"
-          
-          echo "Checking Kured events..."
-          kubectl get events -n kube-system --sort-by='.lastTimestamp' | grep kured || echo "No Kured events found"
 
   # Job 4: Self-Healing Controller Testing
   self-healing-test:
