@@ -242,9 +242,19 @@ jobs:
         run: |
           echo "Current KUBECONFIG: $KUBECONFIG"
           echo "Kubectl config current-context:"
-          kubectl config current-context
+          kubectl config current-context || echo "No current context"
           echo "Kubectl config view:"
-          kubectl config view --minify
+          kubectl config view --minify || echo "No config available"
+          
+          # Ensure kubectl context is set
+          if ! kubectl config current-context >/dev/null 2>&1; then
+            echo "Setting up kubectl context..."
+            minikube kubectl -- config view --minify --flatten > ~/.kube/config
+            kubectl config set-cluster minikube --server=$(minikube kubectl -- config view --minify -o jsonpath='{.clusters[0].cluster.server}')
+            kubectl config set-context minikube --cluster=minikube --user=minikube
+            kubectl config use-context minikube
+            echo "Kubectl context set to: $(kubectl config current-context)"
+          fi
           
           cd terraform
           terraform plan -var="ci_cd_mode=false" -out=tfplan
@@ -412,9 +422,19 @@ jobs:
           # Deploy infrastructure with Terraform
           echo "Current KUBECONFIG: $KUBECONFIG"
           echo "Kubectl config current-context:"
-          kubectl config current-context
+          kubectl config current-context || echo "No current context"
           echo "Kubectl config view:"
-          kubectl config view --minify
+          kubectl config view --minify || echo "No config available"
+          
+          # Ensure kubectl context is set
+          if ! kubectl config current-context >/dev/null 2>&1; then
+            echo "Setting up kubectl context..."
+            minikube kubectl -- config view --minify --flatten > ~/.kube/config
+            kubectl config set-cluster minikube --server=$(minikube kubectl -- config view --minify -o jsonpath='{.clusters[0].cluster.server}')
+            kubectl config set-context minikube --cluster=minikube --user=minikube
+            kubectl config use-context minikube
+            echo "Kubectl context set to: $(kubectl config current-context)"
+          fi
           
           cd terraform
           terraform init
@@ -563,9 +583,19 @@ jobs:
           # Deploy infrastructure with Terraform
           echo "Current KUBECONFIG: $KUBECONFIG"
           echo "Kubectl config current-context:"
-          kubectl config current-context
+          kubectl config current-context || echo "No current context"
           echo "Kubectl config view:"
-          kubectl config view --minify
+          kubectl config view --minify || echo "No config available"
+          
+          # Ensure kubectl context is set
+          if ! kubectl config current-context >/dev/null 2>&1; then
+            echo "Setting up kubectl context..."
+            minikube kubectl -- config view --minify --flatten > ~/.kube/config
+            kubectl config set-cluster minikube --server=$(minikube kubectl -- config view --minify -o jsonpath='{.clusters[0].cluster.server}')
+            kubectl config set-context minikube --cluster=minikube --user=minikube
+            kubectl config use-context minikube
+            echo "Kubectl context set to: $(kubectl config current-context)"
+          fi
           
           cd terraform
           terraform init
