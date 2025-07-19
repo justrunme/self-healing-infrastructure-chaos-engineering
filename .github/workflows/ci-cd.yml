@@ -205,6 +205,7 @@ jobs:
         run: |
           minikube update-context
           kubectl config current-context
+          echo "KUBECONFIG=~/.kube/config" >> $GITHUB_ENV
 
       - name: Initialize and validate Terraform
         run: |
@@ -404,6 +405,7 @@ jobs:
           # Ensure kubectl context
           minikube update-context
           kubectl config current-context
+          export KUBECONFIG=~/.kube/config
 
           # Deploy infrastructure with Terraform
           cd terraform
@@ -553,6 +555,7 @@ jobs:
           # Ensure kubectl context
           minikube update-context
           kubectl config current-context
+          export KUBECONFIG=~/.kube/config
 
           # Deploy infrastructure with Terraform
           cd terraform
