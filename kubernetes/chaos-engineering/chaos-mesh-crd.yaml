@@ -100,4 +100,4 @@ spec:
                 duration:
                   type: string
                 scheduler:
-                  type: object 
+                  type: object
