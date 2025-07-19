@@ -1,5 +1,5 @@
 # Runtime dependencies for Self-Healing Controller
-kubernetes==26.1.0
+kubernetes==33.1.0
 requests==2.31.0
 PyYAML==6.0.1
 prometheus-client==0.17.1
