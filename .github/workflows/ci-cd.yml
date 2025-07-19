@@ -142,22 +142,28 @@ jobs:
       - name: Setup Minikube
         uses: ./.github/actions/setup-minikube
 
-      # 3.2 Cache Terraform plugins
+      # 3.2 Setup Terraform
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v2
+        with:
+          terraform_version: '1.0.11'
+
+      # 3.3 Cache Terraform plugins
       - uses: actions/cache@v3
         with:
           path: ~/.terraform.d/plugin-cache
           key: ${{ runner.os }}-tf-plugins-${{ hashFiles('terraform/**/*.tf') }}
 
-      # 3.3 Configure Terraform plugin cache
+      # 3.4 Configure Terraform plugin cache
       - name: Configure Terraform plugin cache
         run: |
           mkdir -p ~/.terraform.d/plugin-cache
           echo "TF_PLUGIN_CACHE_DIR=$HOME/.terraform.d/plugin-cache" >> $GITHUB_ENV
 
-      # 3.4 Deploy infrastructure
+      # 3.5 Deploy infrastructure
       - name: Terraform Init & Apply
+        working-directory: terraform
         run: |
-          cd terraform
           terraform init
           terraform plan -var="ci_cd_mode=false" -out=tfplan
           terraform apply -auto-approve tfplan
