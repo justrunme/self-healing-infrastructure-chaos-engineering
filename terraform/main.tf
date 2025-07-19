@@ -665,17 +665,20 @@ resource "kubernetes_deployment" "test_app" {
           security_context {
             allow_privilege_escalation = false
             read_only_root_filesystem  = false
-            run_as_non_root            = false  # Разрешаем запуск от root для nginx
-            run_as_user                = 0      # Запускаем от root
+            run_as_non_root            = true   # Запускаем как непривилегированный пользователь
+            run_as_user                = 101    # nginx user в этом образе
+            run_as_group               = 101    # nginx group в этом образе
             capabilities {
               drop = ["ALL"]
             }
           }
         }
 
-        # Запускаем контейнер от root для доступа к /var/run
+        # Запускаем контейнер от nginx UID/GID для корректной работы с томами
         security_context {
-          run_as_user = 0
+          fs_group      = 101   # смена группы для всех монтируемых томов
+          run_as_user   = 101   # запуск контейнера от nginx'ового UID
+          run_as_group  = 101   # запуск контейнера от nginx'ового GID
         }
       }
     }
