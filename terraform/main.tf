@@ -665,19 +665,17 @@ resource "kubernetes_deployment" "test_app" {
           security_context {
             allow_privilege_escalation = false
             read_only_root_filesystem  = false
-            run_as_non_root            = false  # Разрешаем запуск от root для nginx
-            run_as_user                = 0      # Запускаем от root
+            run_as_non_root            = true   # Запускаем как непривилегированный пользователь
+            run_as_user                = 101    # nginx user в этом образе
             capabilities {
               drop = ["ALL"]
             }
           }
         }
 
+        # Все смонтированные тома получат группу 101 (nginx) и будут записываемы
         security_context {
-          fs_group        = 0
-          run_as_group    = 0
-          run_as_non_root = false  # Разрешаем запуск от root для nginx
-          run_as_user     = 0
+          fs_group = 101
         }
       }
     }
