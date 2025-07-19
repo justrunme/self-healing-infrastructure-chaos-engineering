@@ -21,13 +21,25 @@ class TestSelfHealingPerformance(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         """Set up test environment"""
+        cls.k8s_client = None
+        cls.base_url = "http://localhost:8081"
+        
+        # Try to initialize Kubernetes client
         try:
             config.load_incluster_config()
         except config.ConfigException:
-            config.load_kube_config()
-
+            try:
+                config.load_kube_config()
+            except config.ConfigException:
+                # Kubernetes not available, tests will be skipped
+                return
+        
         cls.k8s_client = client.CoreV1Api()
-        cls.base_url = "http://localhost:8081"
+
+    def _skip_if_no_k8s(self):
+        """Skip test if Kubernetes is not available"""
+        if self.k8s_client is None:
+            self.skipTest("Kubernetes not available")
 
     def test_health_endpoint_performance(self):
         """Test health endpoint performance under load"""
@@ -119,27 +131,45 @@ class TestSelfHealingPerformance(unittest.TestCase):
 
     def test_pod_creation_performance(self):
         """Test pod creation performance"""
-
+        self._skip_if_no_k8s()
+        
         def create_test_pod(pod_name):
             start_time = time.time()
             try:
                 pod = client.V1Pod(
-                    metadata=client.V1ObjectMeta(name=f"test-pod-{pod_name}", namespace="test-app"),
+                    metadata=client.V1ObjectMeta(
+                        name=f"test-pod-{pod_name}",
+                        namespace="test-app"
+                    ),
                     spec=client.V1PodSpec(
                         containers=[
-                            client.V1Container(name="test-container", image="busybox:1.35", command=["sleep", "30"])
+                            client.V1Container(
+                                name="test-container",
+                                image="busybox:1.35",
+                                command=["sleep", "30"]
+                            )
                         ],
-                        restart_policy="Never",
-                    ),
+                        restart_policy="Never"
+                    )
                 )
 
-                self.k8s_client.create_namespaced_pod(namespace="test-app", body=pod)
+                self.k8s_client.create_namespaced_pod(
+                    namespace="test-app",
+                    body=pod
+                )
 
                 end_time = time.time()
-                return {"success": True, "creation_time": end_time - start_time}
+                return {
+                    "success": True,
+                    "creation_time": end_time - start_time
+                }
             except Exception as e:
                 end_time = time.time()
-                return {"success": False, "creation_time": end_time - start_time, "error": str(e)}
+                return {
+                    "success": False,
+                    "creation_time": end_time - start_time,
+                    "error": str(e)
+                }
 
         # Test creating 3 pods concurrently
         with concurrent.futures.ThreadPoolExecutor(max_workers=3) as executor:
@@ -149,7 +179,10 @@ class TestSelfHealingPerformance(unittest.TestCase):
         # Clean up test pods
         for i in range(3):
             try:
-                self.k8s_client.delete_namespaced_pod(name=f"test-pod-{i}", namespace="test-app")
+                self.k8s_client.delete_namespaced_pod(
+                    name=f"test-pod-{i}",
+                    namespace="test-app"
+                )
             except Exception:
                 pass
 
@@ -162,6 +195,8 @@ class TestSelfHealingPerformance(unittest.TestCase):
 
     def test_memory_usage_under_load(self):
         """Test memory usage under load"""
+        self._skip_if_no_k8s()
+        
         # Get initial memory usage
         initial_memory = self._get_pod_memory_usage("self-healing-controller", "self-healing")
 
@@ -189,6 +224,8 @@ class TestSelfHealingPerformance(unittest.TestCase):
 
     def test_cpu_usage_under_load(self):
         """Test CPU usage under load"""
+        self._skip_if_no_k8s()
+        
         # Get initial CPU usage
         initial_cpu = self._get_pod_cpu_usage("self-healing-controller", "self-healing")
 
@@ -239,22 +276,31 @@ class TestSelfHealingPerformance(unittest.TestCase):
 
     def test_concurrent_pod_failures(self):
         """Test handling of concurrent pod failures"""
-
+        self._skip_if_no_k8s()
+        
         def create_failing_pod(pod_name):
             try:
                 pod = client.V1Pod(
-                    metadata=client.V1ObjectMeta(name=f"failing-pod-{pod_name}", namespace="test-app"),
+                    metadata=client.V1ObjectMeta(
+                        name=f"failing-pod-{pod_name}",
+                        namespace="test-app"
+                    ),
                     spec=client.V1PodSpec(
                         containers=[
                             client.V1Container(
-                                name="failing-container", image="busybox:1.35", command=["sh", "-c", "exit 1"]
+                                name="failing-container",
+                                image="busybox:1.35",
+                                command=["sh", "-c", "exit 1"]
                             )
                         ],
-                        restart_policy="Never",
-                    ),
+                        restart_policy="Never"
+                    )
                 )
 
-                self.k8s_client.create_namespaced_pod(namespace="test-app", body=pod)
+                self.k8s_client.create_namespaced_pod(
+                    namespace="test-app",
+                    body=pod
+                )
                 return True
             except Exception:
                 return False
@@ -267,7 +313,10 @@ class TestSelfHealingPerformance(unittest.TestCase):
         # Clean up
         for i in range(3):
             try:
-                self.k8s_client.delete_namespaced_pod(name=f"failing-pod-{i}", namespace="test-app")
+                self.k8s_client.delete_namespaced_pod(
+                    name=f"failing-pod-{i}",
+                    namespace="test-app"
+                )
             except Exception:
                 pass
 
