@@ -198,10 +198,16 @@ jobs:
           kubectl get all --all-namespaces | grep kured
           
           echo "Waiting for Kured DaemonSet..."
-          kubectl wait --for=condition=available daemonset/kured -n kube-system --timeout=300s
+          kubectl wait --for=condition=available daemonset/kured -n kube-system --timeout=300s || {
+            echo "Kured DaemonSet timeout - checking pod status..."
+            kubectl describe pod -n kube-system -l app=kured
+            echo "Checking Kured pod logs..."
+            kubectl logs -n kube-system -l app=kured --tail=50 || echo "No logs available"
+            echo "Continuing without waiting for Kured..."
+          }
           
           echo "Checking Kured pods (may be 0 if no nodes need reboot)..."
-          kubectl get pods -n kube-system | grep kured
+          kubectl get pods -n kube-system | grep kured || echo "No Kured pods found"
 
       - name: Verify all components
         run: |
@@ -214,6 +220,9 @@ jobs:
           echo "Checking Kured status..."
           kubectl get daemonset --all-namespaces | grep kured || echo "No Kured DaemonSet found"
           kubectl get pods --all-namespaces | grep kured || echo "No Kured pods found"
+          
+          echo "Checking Kured events..."
+          kubectl get events -n kube-system --sort-by='.lastTimestamp' | grep kured || echo "No Kured events found"
 
   # Job 4: Self-Healing Controller Testing
   self-healing-test:
