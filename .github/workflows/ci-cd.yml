@@ -168,18 +168,50 @@ jobs:
           terraform plan -var="ci_cd_mode=false" -out=tfplan
           terraform apply -auto-approve tfplan
 
-      # 3.6 Wait for deployments to be ready
+      # 3.6 Ensure we talk to Minikube
+      - name: Ensure we talk to Minikube
+        run: |
+          echo "Current context: $(kubectl config current-context)"
+          kubectl cluster-info
+
+      # 3.7 Debug: list namespaces
+      - name: Debug list namespaces
+        run: |
+          kubectl get namespaces
+
+      # 3.8 Create namespaces if missing
+      - name: Create namespaces if missing
+        run: |
+          # Create self-healing namespace if missing
+          if ! kubectl get ns self-healing &>/dev/null; then
+            echo "❗️ Namespace self-healing not found, creating..."
+            kubectl create namespace self-healing
+          else
+            echo "✅ Namespace self-healing already exists"
+          fi
+          
+          # Create test-app namespace if missing
+          if ! kubectl get ns test-app &>/dev/null; then
+            echo "❗️ Namespace test-app not found, creating..."
+            kubectl create namespace test-app
+          else
+            echo "✅ Namespace test-app already exists"
+          fi
+
+      # 3.9 Wait for deployments to be ready
       - name: Wait for Self-Healing Controller to be ready
         run: |
           echo "🚀 Waiting for Self-Healing Controller to be ready..."
-          kubectl rollout status deployment/self-healing-controller \
+          # Use minikube kubectl to ensure we're using the right context
+          minikube kubectl -- rollout status deployment/self-healing-controller \
             -n self-healing \
             --timeout=60s
       
       - name: Wait for test-app to be ready
         run: |
           echo "🚀 Waiting for test-app to be ready..."
-          kubectl rollout status deployment/test-app \
+          # Use minikube kubectl to ensure we're using the right context
+          minikube kubectl -- rollout status deployment/test-app \
             -n test-app \
             --timeout=60s
       
@@ -233,10 +265,10 @@ jobs:
       - name: Wait for components to be ready
         run: |
           echo "🚀 Waiting for Self-Healing Controller to roll out..."
-          kubectl rollout status deployment/self-healing-controller -n self-healing --timeout=120s
+          minikube kubectl -- rollout status deployment/self-healing-controller -n self-healing --timeout=120s
           
           echo "🚀 Waiting for test-app to roll out..."
-          kubectl rollout status deployment/test-app -n test-app --timeout=120s
+          minikube kubectl -- rollout status deployment/test-app -n test-app --timeout=120s
 
       - name: Test Self-Healing Controller health
         run: |

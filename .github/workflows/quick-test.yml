@@ -110,10 +110,10 @@ jobs:
       - name: Wait for components
         run: |
           echo "🚀 Waiting for test-app to roll out..."
-          kubectl rollout status deployment/test-app -n test-app --timeout=120s
+          minikube kubectl -- rollout status deployment/test-app -n test-app --timeout=120s
           
           echo "🚀 Waiting for Self-Healing Controller to roll out..."
-          kubectl rollout status deployment/self-healing-controller -n self-healing --timeout=120s
+          minikube kubectl -- rollout status deployment/self-healing-controller -n self-healing --timeout=120s
 
       - name: Test Self-Healing functionality
         run: |
