@@ -255,6 +255,20 @@ resource "kubernetes_manifest" "chaos_mesh_deployment" {
   ]
 }
 
+# Установка Chaos Mesh CRD
+resource "kubernetes_manifest" "chaos_mesh_crd" {
+  for_each = toset([
+    for doc in split("---", file("${path.module}/../kubernetes/chaos-engineering/chaos-mesh-crd.yaml")) : 
+    trimspace(doc) if length(trimspace(doc)) > 0
+  ])
+  
+  manifest = yamldecode(each.value)
+  
+  depends_on = [
+    kubernetes_manifest.chaos_mesh_deployment
+  ]
+}
+
 # Развертывание Chaos экспериментов
 resource "kubernetes_manifest" "chaos_experiments" {
   for_each = toset([
@@ -265,7 +279,7 @@ resource "kubernetes_manifest" "chaos_experiments" {
   manifest = yamldecode(each.value)
   
   depends_on = [
-    kubernetes_manifest.chaos_mesh_deployment
+    kubernetes_manifest.chaos_mesh_crd
   ]
 }
 

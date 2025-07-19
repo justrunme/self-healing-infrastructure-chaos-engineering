@@ -1,0 +1,103 @@
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  name: podchaos.chaos-mesh.org
+spec:
+  group: chaos-mesh.org
+  names:
+    kind: PodChaos
+    listKind: PodChaosList
+    plural: podchaos
+    singular: podchaos
+  scope: Namespaced
+  versions:
+    - name: v1alpha1
+      served: true
+      storage: true
+      schema:
+        openAPIV3Schema:
+          type: object
+          properties:
+            spec:
+              type: object
+              properties:
+                action:
+                  type: string
+                mode:
+                  type: string
+                selector:
+                  type: object
+                duration:
+                  type: string
+                scheduler:
+                  type: object
+---
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  name: stresschaos.chaos-mesh.org
+spec:
+  group: chaos-mesh.org
+  names:
+    kind: StressChaos
+    listKind: StressChaosList
+    plural: stresschaos
+    singular: stresschaos
+  scope: Namespaced
+  versions:
+    - name: v1alpha1
+      served: true
+      storage: true
+      schema:
+        openAPIV3Schema:
+          type: object
+          properties:
+            spec:
+              type: object
+              properties:
+                mode:
+                  type: string
+                selector:
+                  type: object
+                stressors:
+                  type: object
+                duration:
+                  type: string
+                scheduler:
+                  type: object
+---
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  name: networkchaos.chaos-mesh.org
+spec:
+  group: chaos-mesh.org
+  names:
+    kind: NetworkChaos
+    listKind: NetworkChaosList
+    plural: networkchaos
+    singular: networkchaos
+  scope: Namespaced
+  versions:
+    - name: v1alpha1
+      served: true
+      storage: true
+      schema:
+        openAPIV3Schema:
+          type: object
+          properties:
+            spec:
+              type: object
+              properties:
+                action:
+                  type: string
+                mode:
+                  type: string
+                selector:
+                  type: object
+                delay:
+                  type: object
+                duration:
+                  type: string
+                scheduler:
+                  type: object 
