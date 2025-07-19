@@ -176,7 +176,7 @@ jobs:
           kubectl get pods --all-namespaces | grep -E "(prometheus|alertmanager|self-healing|test-app)"
           
           echo "Checking Kured DaemonSet..."
-          kubectl get daemonset -n kube-system | grep kured
+          kubectl get daemonset --all-namespaces | grep kured || echo "No Kured DaemonSet found"
 
       - name: Wait for components to be ready
         run: |
@@ -191,7 +191,11 @@ jobs:
 
           echo "Deploying Kured..."
           latest=$(curl -s https://api.github.com/repos/kubereboot/kured/releases | jq -r '.[0].tag_name')
+          echo "Latest Kured version: $latest"
           kubectl apply -f "https://github.com/kubereboot/kured/releases/download/$latest/kured-$latest-dockerhub.yaml"
+          
+          echo "Checking what was created..."
+          kubectl get all --all-namespaces | grep kured
           
           echo "Waiting for Kured DaemonSet..."
           kubectl wait --for=condition=available daemonset/kured -n kube-system --timeout=300s
@@ -208,8 +212,8 @@ jobs:
           kubectl get svc --all-namespaces | grep -E "(prometheus|alertmanager|self-healing|test-app)"
           
           echo "Checking Kured status..."
-          kubectl get daemonset -n kube-system | grep kured
-          kubectl get pods -n kube-system | grep kured
+          kubectl get daemonset --all-namespaces | grep kured || echo "No Kured DaemonSet found"
+          kubectl get pods --all-namespaces | grep kured || echo "No Kured pods found"
 
   # Job 4: Self-Healing Controller Testing
   self-healing-test:
