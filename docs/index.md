@@ -1,17 +1,51 @@
 # 🚀 Self-Healing Infrastructure with Chaos Engineering
 
+!!! info "🎉 Welcome to the Documentation!"
+    This is a comprehensive guide for building and managing self-healing Kubernetes infrastructure with chaos engineering principles.
+
+<div class="grid cards" markdown>
+
+-   :material-kubernetes:{ .lg .middle } **Kubernetes**
+
+    ---
+
+    Production-ready Kubernetes infrastructure with self-healing capabilities and automated recovery mechanisms.
+
+    [:octicons-arrow-right-24: Architecture](architecture/overview.md)
+
+-   :material-terraform:{ .lg .middle } **Infrastructure as Code**
+
+    ---
+
+    Terraform-managed infrastructure ensuring consistent and reproducible deployments across environments.
+
+    [:octicons-arrow-right-24: Infrastructure](architecture/infrastructure.md)
+
+-   :material-chart-line:{ .lg .middle } **Monitoring & Observability**
+
+    ---
+
+    Comprehensive monitoring with Prometheus, Grafana dashboards, and intelligent alerting systems.
+
+    [:octicons-arrow-right-24: Monitoring](monitoring/prometheus.md)
+
+-   :material-test-tube:{ .lg .middle } **Chaos Engineering**
+
+    ---
+
+    Integrated chaos experiments to validate system resilience and improve reliability.
+
+    [:octicons-arrow-right-24: Chaos Engineering](chaos-engineering/overview.md)
+
+</div>
+
+## 🔗 Quick Links
+
 <div align="center">
 
-![Kubernetes](https://img.shields.io/badge/Kubernetes-326CE5?style=for-the-badge&logo=kubernetes&logoColor=white)
-![Terraform](https://img.shields.io/badge/Terraform-7B42BC?style=for-the-badge&logo=terraform&logoColor=white)
-![Prometheus](https://img.shields.io/badge/Prometheus-E6522C?style=for-the-badge&logo=prometheus&logoColor=white)
-![Grafana](https://img.shields.io/badge/Grafana-F46800?style=for-the-badge&logo=grafana&logoColor=white)
-
-**A comprehensive Kubernetes-based self-healing infrastructure that automatically detects and recovers from failures, with integrated monitoring, chaos engineering, and automated node management.**
-
-[![GitHub Actions](https://img.shields.io/badge/GitHub_Actions-2088FF?style=for-the-badge&logo=github-actions&logoColor=white)](https://github.com/justrunme/self-healing-infrastructure-chaos-engineering/actions)
-[![GitHub Pages](https://img.shields.io/badge/GitHub_Pages-327FC7?style=for-the-badge&logo=github-pages&logoColor=white)](https://justrunme.github.io/self-healing-infrastructure-chaos-engineering/)
-[![License](https://img.shields.io/badge/License-MIT-yellow.svg?style=for-the-badge)](https://opensource.org/licenses/MIT)
+[![GitHub Repository](https://img.shields.io/badge/GitHub-Repository-black?style=for-the-badge&logo=github)](https://github.com/justrunme/self-healing-infrastructure-chaos-engineering)
+[![Documentation](https://img.shields.io/badge/Documentation-Live-blue?style=for-the-badge&logo=gitbook)](https://justrunme.github.io/self-healing-infrastructure-chaos-engineering/)
+[![CI/CD Pipeline](https://img.shields.io/badge/CI%2FCD-GitHub_Actions-green?style=for-the-badge&logo=github-actions)](https://github.com/justrunme/self-healing-infrastructure-chaos-engineering/actions)
 
 </div>
 

@@ -55,6 +55,7 @@ nav:
     - Prometheus: monitoring/prometheus.md
   - Screenshots: screenshots.md
   - Links: links.md
+  - Setup Guide: setup-github-pages.md
 
 # Plugins
 plugins:
