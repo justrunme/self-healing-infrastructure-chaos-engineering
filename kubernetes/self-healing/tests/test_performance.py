@@ -137,39 +137,22 @@ class TestSelfHealingPerformance(unittest.TestCase):
             start_time = time.time()
             try:
                 pod = client.V1Pod(
-                    metadata=client.V1ObjectMeta(
-                        name=f"test-pod-{pod_name}",
-                        namespace="test-app"
-                    ),
+                    metadata=client.V1ObjectMeta(name=f"test-pod-{pod_name}", namespace="test-app"),
                     spec=client.V1PodSpec(
                         containers=[
-                            client.V1Container(
-                                name="test-container",
-                                image="busybox:1.35",
-                                command=["sleep", "30"]
-                            )
+                            client.V1Container(name="test-container", image="busybox:1.35", command=["sleep", "30"])
                         ],
-                        restart_policy="Never"
-                    )
+                        restart_policy="Never",
+                    ),
                 )
 
-                self.k8s_client.create_namespaced_pod(
-                    namespace="test-app",
-                    body=pod
-                )
+                self.k8s_client.create_namespaced_pod(namespace="test-app", body=pod)
 
                 end_time = time.time()
-                return {
-                    "success": True,
-                    "creation_time": end_time - start_time
-                }
+                return {"success": True, "creation_time": end_time - start_time}
             except Exception as e:
                 end_time = time.time()
-                return {
-                    "success": False,
-                    "creation_time": end_time - start_time,
-                    "error": str(e)
-                }
+                return {"success": False, "creation_time": end_time - start_time, "error": str(e)}
 
         # Test creating 3 pods concurrently
         with concurrent.futures.ThreadPoolExecutor(max_workers=3) as executor:
@@ -179,10 +162,7 @@ class TestSelfHealingPerformance(unittest.TestCase):
         # Clean up test pods
         for i in range(3):
             try:
-                self.k8s_client.delete_namespaced_pod(
-                    name=f"test-pod-{i}",
-                    namespace="test-app"
-                )
+                self.k8s_client.delete_namespaced_pod(name=f"test-pod-{i}", namespace="test-app")
             except Exception:
                 pass
 
@@ -281,26 +261,18 @@ class TestSelfHealingPerformance(unittest.TestCase):
         def create_failing_pod(pod_name):
             try:
                 pod = client.V1Pod(
-                    metadata=client.V1ObjectMeta(
-                        name=f"failing-pod-{pod_name}",
-                        namespace="test-app"
-                    ),
+                    metadata=client.V1ObjectMeta(name=f"failing-pod-{pod_name}", namespace="test-app"),
                     spec=client.V1PodSpec(
                         containers=[
                             client.V1Container(
-                                name="failing-container",
-                                image="busybox:1.35",
-                                command=["sh", "-c", "exit 1"]
+                                name="failing-container", image="busybox:1.35", command=["sh", "-c", "exit 1"]
                             )
                         ],
-                        restart_policy="Never"
-                    )
+                        restart_policy="Never",
+                    ),
                 )
 
-                self.k8s_client.create_namespaced_pod(
-                    namespace="test-app",
-                    body=pod
-                )
+                self.k8s_client.create_namespaced_pod(namespace="test-app", body=pod)
                 return True
             except Exception:
                 return False
@@ -313,10 +285,7 @@ class TestSelfHealingPerformance(unittest.TestCase):
         # Clean up
         for i in range(3):
             try:
-                self.k8s_client.delete_namespaced_pod(
-                    name=f"failing-pod-{i}",
-                    namespace="test-app"
-                )
+                self.k8s_client.delete_namespaced_pod(name=f"failing-pod-{i}", namespace="test-app")
             except Exception:
                 pass
 

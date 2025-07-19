@@ -261,9 +261,7 @@ class TestSelfHealingInfrastructure(unittest.TestCase):
         )
 
         for pod in pods.items:
-            self.assertIsNotNone(
-                pod.spec.security_context, "Security context not configured for pod"
-            )
+            self.assertIsNotNone(pod.spec.security_context, "Security context not configured for pod")
 
     def test_backup_cronjob_exists(self):
         """Test that backup CronJob exists"""
