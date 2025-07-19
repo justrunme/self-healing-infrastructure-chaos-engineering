@@ -198,6 +198,29 @@ resource "helm_release" "prometheus_stack" {
 # Kured will be deployed via GitHub Actions workflow
 # This ensures proper deployment in CI/CD environment
 
+# Развертывание Chaos Mesh
+resource "kubernetes_manifest" "chaos_mesh" {
+  manifest = yamldecode(file("${path.module}/../kubernetes/chaos-engineering/chaos-mesh.yaml"))
+  
+  depends_on = [
+    kubernetes_namespace.chaos_engineering
+  ]
+}
+
+# Развертывание Chaos экспериментов
+resource "kubernetes_manifest" "chaos_experiments" {
+  for_each = toset([
+    for doc in split("---", file("${path.module}/../kubernetes/chaos-engineering/chaos-experiments.yaml")) : 
+    trimspace(doc) if length(trimspace(doc)) > 0
+  ])
+  
+  manifest = yamldecode(each.value)
+  
+  depends_on = [
+    kubernetes_manifest.chaos_mesh
+  ]
+}
+
 # Создание ServiceAccount для Self-Healing Controller
 resource "kubernetes_service_account" "self_healing_controller" {
   metadata {

@@ -177,7 +177,7 @@ jobs:
           kubectl get namespaces | grep -E "(monitoring|chaos-engineering|self-healing|kured|test-app)"
 
           echo "Checking all pods..."
-          kubectl get pods --all-namespaces | grep -E "(prometheus|alertmanager|self-healing|test-app)"
+          kubectl get pods --all-namespaces | grep -E "(prometheus|alertmanager|chaos-mesh|self-healing|test-app)"
           
           echo "Checking Kured DaemonSet..."
           kubectl get daemonset --all-namespaces | grep kured || echo "No Kured DaemonSet found"
@@ -195,6 +195,15 @@ jobs:
           
           echo "Waiting for Prometheus stack..."
           kubectl wait --for=condition=ready pod -l app.kubernetes.io/name=prometheus -n monitoring --timeout=300s
+          
+          echo "Deploying Chaos Mesh..."
+          kubectl apply -f kubernetes/chaos-engineering/chaos-mesh.yaml
+          
+          echo "Waiting for Chaos Mesh..."
+          kubectl wait --for=condition=ready pod -l app=chaos-mesh -n chaos-engineering --timeout=300s
+          
+          echo "Deploying Chaos experiments..."
+          kubectl apply -f kubernetes/chaos-engineering/chaos-experiments.yaml
           
           echo "Deploying Kured..."
           latest=$(curl -s https://api.github.com/repos/kubereboot/kured/releases/latest | jq -r '.tag_name')
