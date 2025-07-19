@@ -91,4 +91,10 @@ variable "alertmanager_config" {
       }
     ]
   }
+}
+
+variable "enable_chaos_experiments" {
+  description = "Enable Chaos Mesh experiments deployment"
+  type        = bool
+  default     = false
 } 

@@ -9,7 +9,10 @@ terraform {
       source  = "hashicorp/helm"
       version = "~> 2.0"
     }
-
+    time = {
+      source  = "hashicorp/time"
+      version = "~> 0.9"
+    }
   }
 }
 
@@ -269,17 +272,24 @@ resource "kubernetes_manifest" "chaos_mesh_crd" {
   ]
 }
 
+# Ждем готовности CRD
+resource "time_sleep" "wait_for_crd" {
+  depends_on = [kubernetes_manifest.chaos_mesh_crd]
+  create_duration = "30s"
+  count = var.enable_chaos_experiments ? 1 : 0
+}
+
 # Развертывание Chaos экспериментов
 resource "kubernetes_manifest" "chaos_experiments" {
-  for_each = toset([
+  for_each = var.enable_chaos_experiments ? toset([
     for doc in split("---", file("${path.module}/../kubernetes/chaos-engineering/chaos-experiments.yaml")) : 
     trimspace(doc) if length(trimspace(doc)) > 0
-  ])
+  ]) : []
   
   manifest = yamldecode(each.value)
   
   depends_on = [
-    kubernetes_manifest.chaos_mesh_crd
+    time_sleep.wait_for_crd[0]
   ]
 }
 
