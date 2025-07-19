@@ -67,6 +67,9 @@ jobs:
           cd terraform
           # Create plugin cache directory if it doesn't exist
           mkdir -p "$HOME/.terraform.d/plugin-cache"
+          # First init without plugin-dir to download providers
+          terraform init
+          # Then init with plugin-dir to use cache
           terraform init -plugin-dir="$HOME/.terraform.d/plugin-cache"
           terraform validate
 
@@ -139,6 +142,9 @@ jobs:
           cd terraform
           # Create plugin cache directory if it doesn't exist
           mkdir -p "$HOME/.terraform.d/plugin-cache"
+          # First init without plugin-dir to download providers
+          terraform init
+          # Then init with plugin-dir to use cache
           terraform init -plugin-dir="$HOME/.terraform.d/plugin-cache"
           terraform plan -var="ci_cd_mode=false" -out=tfplan
           terraform apply -auto-approve tfplan
