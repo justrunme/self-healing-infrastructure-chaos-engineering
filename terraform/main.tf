@@ -17,24 +17,14 @@ terraform {
 }
 
 provider "kubernetes" {
-  # Use environment variables for Kubernetes configuration
-  # This works better in CI/CD environments
-  host                   = var.ci_cd_mode ? "" : null
-  client_certificate     = var.ci_cd_mode ? "" : null
-  client_key             = var.ci_cd_mode ? "" : null
-  cluster_ca_certificate = var.ci_cd_mode ? "" : null
-  config_path            = var.ci_cd_mode ? null : var.kubernetes_config_path
+  # In CI/CD, Terraform will automatically use kubectl context
+  # No explicit configuration needed - it will use KUBECONFIG env var
 }
 
 provider "helm" {
   kubernetes {
-    # Use environment variables for Kubernetes configuration
-    # This works better in CI/CD environments
-    host                   = var.ci_cd_mode ? "" : null
-    client_certificate     = var.ci_cd_mode ? "" : null
-    client_key             = var.ci_cd_mode ? "" : null
-    cluster_ca_certificate = var.ci_cd_mode ? "" : null
-    config_path            = var.ci_cd_mode ? null : var.kubernetes_config_path
+    # In CI/CD, Terraform will automatically use kubectl context
+    # No explicit configuration needed - it will use KUBECONFIG env var
   }
 }
 

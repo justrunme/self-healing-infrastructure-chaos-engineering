@@ -220,6 +220,9 @@ jobs:
             kubectl config set-context minikube --cluster=minikube --user=minikube
             kubectl config use-context minikube
           }
+          
+          # Set KUBECONFIG environment variable for Terraform
+          echo "KUBECONFIG=~/.kube/config" >> $GITHUB_ENV
 
       - name: Initialize and validate Terraform
         run: |
@@ -359,6 +362,29 @@ jobs:
           curl -LO https://storage.googleapis.com/minikube/releases/latest/minikube-linux-amd64
           sudo install minikube-linux-amd64 /usr/local/bin/minikube
           minikube start --driver=docker --cpus=2 --memory=4096
+
+      - name: Setup kubectl context for Minikube
+        run: |
+          # Wait for Minikube to be fully ready
+          minikube status
+          
+          # Get the kubeconfig and set it up
+          minikube kubectl -- config view --minify --flatten > ~/.kube/config || {
+            echo "Failed to get kubeconfig, trying alternative approach..."
+            minikube kubectl -- config view > ~/.kube/config
+          }
+          chmod 600 ~/.kube/config
+          
+          # Verify context is set
+          kubectl config current-context || {
+            echo "No current context, setting minikube as default..."
+            kubectl config set-cluster minikube --server=$(minikube kubectl -- config view --minify -o jsonpath='{.clusters[0].cluster.server}')
+            kubectl config set-context minikube --cluster=minikube --user=minikube
+            kubectl config use-context minikube
+          }
+          
+          # Set KUBECONFIG environment variable for Terraform
+          echo "KUBECONFIG=~/.kube/config" >> $GITHUB_ENV
 
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v2
@@ -501,6 +527,9 @@ jobs:
             kubectl config set-context minikube --cluster=minikube --user=minikube
             kubectl config use-context minikube
           }
+          
+          # Set KUBECONFIG environment variable for Terraform
+          echo "KUBECONFIG=~/.kube/config" >> $GITHUB_ENV
 
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v2
