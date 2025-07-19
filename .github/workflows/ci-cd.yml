@@ -352,10 +352,51 @@ jobs:
         with:
           version: 'latest'
 
+      - name: Setup Minikube
+        run: |
+          curl -LO https://storage.googleapis.com/minikube/releases/latest/minikube-linux-amd64
+          sudo install minikube-linux-amd64 /usr/local/bin/minikube
+          minikube start --driver=docker --cpus=2 --memory=4096
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v2
+        with:
+          terraform_version: "1.0"
+
+      - name: Setup Docker
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build and deploy infrastructure
+        run: |
+          # Build Self-Healing Controller image
+          cd kubernetes/self-healing
+          docker build -t self-healing-controller:latest .
+          echo "Loading image into Minikube..."
+          minikube image load self-healing-controller:latest
+          cd ../..
+
+          # Deploy infrastructure with Terraform
+          cd terraform
+          terraform init
+          terraform plan -out=tfplan
+          terraform apply tfplan
+          cd ..
+
+      - name: Wait for components to be ready
+        run: |
+          echo "Waiting for Self-Healing Controller..."
+          minikube kubectl -- wait --for=condition=ready pod -l app=self-healing-controller -n self-healing --timeout=600s
+          
+          echo "Waiting for test application..."
+          minikube kubectl -- wait --for=condition=ready pod -l app=test-app -n test-app --timeout=300s
+          
+          echo "Waiting for Prometheus stack..."
+          minikube kubectl -- wait --for=condition=ready pod -l app.kubernetes.io/name=prometheus -n monitoring --timeout=300s
+
       - name: Test Prometheus connectivity
         run: |
           # Start port-forward in background
-          kubectl port-forward -n monitoring svc/prometheus-kube-prometheus-prometheus 9090:9090 &
+          minikube kubectl -- port-forward -n monitoring svc/prometheus-kube-prometheus-prometheus 9090:9090 &
           PF_PID=$!
 
           # Wait for port-forward to be ready
@@ -373,7 +414,7 @@ jobs:
       - name: Test Alertmanager connectivity
         run: |
           # Start port-forward in background
-          kubectl port-forward -n monitoring svc/prometheus-kube-prometheus-alertmanager 9093:9093 &
+          minikube kubectl -- port-forward -n monitoring svc/prometheus-kube-prometheus-alertmanager 9093:9093 &
           PF_PID=$!
 
           # Wait for port-forward to be ready
@@ -388,7 +429,7 @@ jobs:
       - name: Test Grafana connectivity
         run: |
           # Start port-forward in background
-          kubectl port-forward -n monitoring svc/prometheus-grafana 3000:80 &
+          minikube kubectl -- port-forward -n monitoring svc/prometheus-grafana 3000:80 &
           PF_PID=$!
 
           # Wait for port-forward to be ready
@@ -403,7 +444,7 @@ jobs:
       - name: Test Self-Healing Controller metrics
         run: |
           # Start port-forward in background
-          kubectl port-forward -n self-healing svc/self-healing-controller 8081:8080 &
+          minikube kubectl -- port-forward -n self-healing svc/self-healing-controller 8081:8080 &
           PF_PID=$!
 
           # Wait for port-forward to be ready
