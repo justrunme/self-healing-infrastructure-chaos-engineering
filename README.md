@@ -183,30 +183,18 @@ This self-healing infrastructure is designed for real-world production environme
 - **Terraform** >= 1.0
 - **Minikube** (for local testing)
 
-### Option 1: Terraform Deployment (Recommended)
+### Quick Deployment
 
 ```bash
 # Clone the repository
 git clone https://github.com/justrunme/self-healing-infrastructure-chaos-engineering.git
 cd self-healing-infrastructure-chaos-engineering
 
-# Deploy with Terraform
+# Deploy with Terraform (recommended)
 ./scripts/deploy-terraform.sh
-```
 
-### Option 2: Manual Deployment
-
-```bash
-# Start Minikube
+# Or deploy manually
 minikube start --driver=docker --cpus=2 --memory=4096
-
-# Build and load Self-Healing Controller
-cd kubernetes/self-healing
-docker build -t self-healing-controller:latest .
-minikube image load self-healing-controller:latest
-cd ../..
-
-# Deploy components
 kubectl apply -f kubernetes/monitoring/
 kubectl apply -f kubernetes/self-healing/deployment.yaml
 kubectl apply -f kubernetes/test-app/test-app.yaml
@@ -402,9 +390,7 @@ grafana_admin_password = "your-secure-password"
 self_healing_controller_image = "self-healing-controller:latest"
 ```
 
-### Self-Healing Controller Configuration
-
-The controller can be configured via environment variables:
+### Self-Healing Controller Environment Variables
 
 ```yaml
 POD_FAILURE_THRESHOLD: "3"
@@ -417,8 +403,6 @@ SLACK_NOTIFICATIONS_ENABLED: "true"
 
 ## 🐳 Docker Images
 
-### Available Images
-
 The Self-Healing Controller is automatically built and published to GitHub Container Registry:
 
 ```bash
@@ -429,26 +413,11 @@ docker pull ghcr.io/justrunme/self-healing-infrastructure-chaos-engineering/self
 docker pull ghcr.io/justrunme/self-healing-infrastructure-chaos-engineering/self-healing-controller:v1.0.0
 ```
 
-### Image Management
-
-```bash
-# Build a new image
-./scripts/manage-images.sh build v1.0.0
-
-# Create a release
-./scripts/manage-images.sh release v1.0.0
-
-# Update Terraform with new version
-./scripts/manage-images.sh update-terraform v1.0.0
-```
-
 ## 📈 Performance & Reliability Features
 
 - **Health Checks**: Liveness, readiness, and startup probes
 - **Resource Management**: Optimized resource allocation with limits and requests
 - **Backup & Recovery**: Automated backup system with configurable retention
-- **Integration Tests**: Comprehensive test coverage across all components
-- **Performance Tests**: Load testing and performance validation
 - **Chaos Engineering**: Automated resilience testing with Chaos Mesh
 
 ## 🎯 Best Practices & Recommendations
@@ -515,21 +484,7 @@ kubectl port-forward -n monitoring svc/prometheus-grafana 3000:3000
 
 ### 📚 **Advanced Configuration**
 
-#### **Custom Self-Healing Rules**
-```yaml
-# Example: Custom failure detection
-apiVersion: v1
-kind: ConfigMap
-metadata:
-  name: self-healing-config
-data:
-  POD_FAILURE_THRESHOLD: "5"
-  POD_RESTART_TIMEOUT: "600"
-  NODE_FAILURE_THRESHOLD: "3"
-  CHECK_INTERVAL: "15"
-```
-
-#### **Chaos Engineering Experiments**
+#### **Custom Chaos Engineering Experiments**
 ```yaml
 # Example: Custom chaos experiment
 apiVersion: chaos-mesh.org/v1alpha1
