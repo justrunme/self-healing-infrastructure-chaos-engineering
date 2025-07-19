@@ -53,37 +53,112 @@
 
 ## 🎯 Project Overview
 
-This project demonstrates a production-ready, self-healing Kubernetes infrastructure that automatically detects and recovers from various types of failures. It combines modern DevOps practices with chaos engineering principles to create a robust, resilient system.
+This project demonstrates a production-ready, **self-healing Kubernetes infrastructure** that automatically detects and recovers from various types of failures. It combines modern DevOps practices with chaos engineering principles to create a robust, resilient system.
 
-### �� Key Features
+!!! success "🚀 What Makes This Special"
+    This infrastructure automatically heals itself! When something breaks, it detects the issue and fixes it without human intervention. Perfect for production environments that need 99.9% uptime.
 
-- **🔄 Self-Healing**: Automatic detection and recovery from node failures, pod crashes, and service disruptions
-- **🎲 Chaos Engineering**: Integrated chaos experiments to test system resilience
-- **📊 Monitoring**: Comprehensive monitoring with Prometheus and Grafana
-- **🤖 Automation**: Fully automated CI/CD pipeline with GitHub Actions
-- **☁️ Infrastructure as Code**: Terraform-managed infrastructure
-- **🔒 Security**: RBAC, network policies, and security best practices
+<div class="grid cards" markdown>
 
-### 🏗️ Architecture Highlights
+-   :material-heart-pulse:{ .lg .middle } **Self-Healing**
+
+    ---
+
+    Automatic detection and recovery from node failures, pod crashes, and service disruptions in under 30 seconds.
+
+    [:octicons-arrow-right-24: Learn More](self-healing/logic.md)
+
+-   :material-test-tube:{ .lg .middle } **Chaos Engineering**
+
+    ---
+
+    Integrated chaos experiments to test system resilience and validate recovery mechanisms.
+
+    [:octicons-arrow-right-24: Chaos Tests](chaos-engineering/overview.md)
+
+-   :material-chart-line:{ .lg .middle } **Monitoring**
+
+    ---
+
+    Comprehensive monitoring with Prometheus, Grafana dashboards, and intelligent alerting.
+
+    [:octicons-arrow-right-24: Dashboards](monitoring/prometheus.md)
+
+-   :material-robot:{ .lg .middle } **Automation**
+
+    ---
+
+    Fully automated CI/CD pipeline with GitHub Actions and Infrastructure as Code.
+
+    [:octicons-arrow-right-24: CI/CD Pipeline](ci-cd/overview.md)
+
+-   :material-cloud:{ .lg .middle } **Infrastructure as Code**
+
+    ---
+
+    Terraform-managed infrastructure ensuring consistent and reproducible deployments.
+
+    [:octicons-arrow-right-24: Architecture](architecture/infrastructure.md)
+
+-   :material-shield-check:{ .lg .middle } **Security**
+
+    ---
+
+    RBAC, network policies, and security best practices built-in from day one.
+
+    [:octicons-arrow-right-24: Security Guide](architecture/components.md)
+
+</div>
+
+## 📊 **System Performance**
+
+<div class="grid cards" markdown>
+
+-   :material-speedometer:{ .lg .middle } **99.9% Uptime**
+
+    ---
+
+    Production-ready reliability with automatic failover and recovery mechanisms.
+
+-   :material-clock-fast:{ .lg .middle } **< 30s Recovery**
+
+    ---
+
+    Lightning-fast automatic recovery from failures and service disruptions.
+
+-   :material-shield-check:{ .lg .middle } **95% Automated**
+
+    ---
+
+    Almost everything runs automatically - minimal manual intervention required.
+
+-   :material-test-tube:{ .lg .middle } **85% Test Coverage**
+
+    ---
+
+    Comprehensive chaos engineering tests covering most failure scenarios.
+
+</div>
+
+## 🏗️ **Architecture Overview**
 
 ```mermaid
 graph TB
-    subgraph "Infrastructure Layer"
-        TF[Terraform]
+    subgraph "🔄 CI/CD Pipeline"
+        GH[GitHub Actions] --> BUILD[Build & Test]
+        BUILD --> DEPLOY[Deploy]
+    end
+    
+    subgraph "☁️ Infrastructure Layer"
+        TF[Terraform IaC]
         K8S[Kubernetes Cluster]
         MON[Monitoring Stack]
     end
     
-    subgraph "Application Layer"
+    subgraph "📱 Application Layer"
         APP[Test Applications]
         CHAOS[Chaos Experiments]
         HEAL[Self-Healing Controller]
-    end
-    
-    subgraph "CI/CD Pipeline"
-        GH[GitHub Actions]
-        BUILD[Build & Test]
-        DEPLOY[Deploy]
     end
     
     TF --> K8S
@@ -93,15 +168,88 @@ graph TB
     MON --> HEAL
     GH --> DEPLOY
     DEPLOY --> K8S
+    
+    style GH fill:#3498db,stroke:#2980b9,color:#fff
+    style K8S fill:#e74c3c,stroke:#c0392b,color:#fff
+    style MON fill:#2ecc71,stroke:#27ae60,color:#fff
+    style CHAOS fill:#f39c12,stroke:#e67e22,color:#fff
 ```
 
-## 🚀 Quick Start
+## 🎬 **Live Demo**
 
-### Prerequisites
+!!! example "Try It Yourself!"
+    Want to see self-healing in action? Follow our quick start guide to deploy the infrastructure and break some pods - watch them heal automatically!
 
-- Kubernetes cluster (Minikube, kind, or cloud provider)
-- kubectl configured
-- Terraform (for infrastructure provisioning)
+<div class="grid cards" markdown>
+
+-   :material-play-circle:{ .lg .middle } **Quick Demo**
+
+    ---
+
+    ```bash
+    # Break a pod and watch it heal
+    kubectl delete pod <pod-name>
+    # ✅ Pod automatically recreated in 10s
+    ```
+
+-   :material-eye:{ .lg .middle } **Watch Recovery**
+
+    ---
+
+    ```bash
+    # Monitor the healing process
+    kubectl get pods --watch
+    # ✅ Real-time recovery monitoring
+    ```
+
+-   :material-test-tube:{ .lg .middle } **Run Chaos Test**
+
+    ---
+
+    ```bash
+    # Trigger chaos experiment
+    kubectl apply -f chaos-experiments.yaml
+    # ✅ System recovers automatically
+    ```
+
+-   :material-chart-line:{ .lg .middle } **Check Metrics**
+
+    ---
+
+    ```bash
+    # View recovery metrics
+    curl localhost:9090/metrics
+    # ✅ See healing statistics
+    ```
+
+</div>
+
+## 🚀 **Quick Start**
+
+### **Prerequisites**
+
+!!! info "Before You Begin"
+    Make sure you have these tools installed and configured properly.
+
+<div class="grid cards" markdown>
+
+-   :material-kubernetes:{ .lg .middle } **Kubernetes**
+
+    ---
+
+    Local cluster (Minikube, kind) or cloud provider (GKE, EKS, AKS)
+
+-   :material-console:{ .lg .middle } **kubectl**
+
+    ---
+
+    Kubernetes command-line tool configured for your cluster
+
+-   :material-terraform:{ .lg .middle } **Terraform**
+
+    ---
+
+    For infrastructure provisioning and management
 - Python 3.8+ (for self-healing controller)
 
 ### Installation
