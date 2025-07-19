@@ -665,8 +665,8 @@ resource "kubernetes_deployment" "test_app" {
           security_context {
             allow_privilege_escalation = false
             read_only_root_filesystem  = false
-            run_as_non_root            = true
-            run_as_user                = 101
+            run_as_non_root            = false  # Разрешаем запуск от root для nginx
+            run_as_user                = 0      # Запускаем от root
             capabilities {
               drop = ["ALL"]
             }
@@ -674,10 +674,10 @@ resource "kubernetes_deployment" "test_app" {
         }
 
         security_context {
-          fs_group        = 101
-          run_as_group    = 101
-          run_as_non_root = true
-          run_as_user     = 101
+          fs_group        = 0
+          run_as_group    = 0
+          run_as_non_root = false  # Разрешаем запуск от root для nginx
+          run_as_user     = 0
         }
       }
     }
