@@ -245,6 +245,7 @@ resource "helm_release" "prometheus_stack" {
 
 # Развертывание Chaos Mesh
 resource "kubernetes_manifest" "chaos_mesh_namespace" {
+  provider = kubernetes
   manifest = yamldecode(file("${path.module}/../kubernetes/chaos-engineering/chaos-mesh-namespace.yaml"))
   
   depends_on = [
@@ -253,6 +254,7 @@ resource "kubernetes_manifest" "chaos_mesh_namespace" {
 }
 
 resource "kubernetes_manifest" "chaos_mesh_deployment" {
+  provider = kubernetes
   manifest = yamldecode(file("${path.module}/../kubernetes/chaos-engineering/chaos-mesh-deployment.yaml"))
   
   depends_on = [
@@ -262,6 +264,7 @@ resource "kubernetes_manifest" "chaos_mesh_deployment" {
 
 # Установка Chaos Mesh CRD
 resource "kubernetes_manifest" "chaos_mesh_crd" {
+  provider = kubernetes
   for_each = toset([
     for doc in split("---", file("${path.module}/../kubernetes/chaos-engineering/chaos-mesh-crd.yaml")) : 
     trimspace(doc) if length(trimspace(doc)) > 0
@@ -283,6 +286,7 @@ resource "time_sleep" "wait_for_crd" {
 
 # Развертывание Chaos экспериментов
 resource "kubernetes_manifest" "chaos_experiments" {
+  provider = kubernetes
   for_each = var.enable_chaos_experiments ? toset([
     for doc in split("---", file("${path.module}/../kubernetes/chaos-engineering/chaos-experiments.yaml")) : 
     trimspace(doc) if length(trimspace(doc)) > 0
@@ -297,6 +301,7 @@ resource "kubernetes_manifest" "chaos_experiments" {
 
 # Развертывание Backup системы - разделяем на отдельные ресурсы
 resource "kubernetes_manifest" "backup_cronjob" {
+  provider = kubernetes
   manifest = yamldecode(split("---", file("${path.module}/../kubernetes/backup/backup-cronjob.yaml"))[0])
   
   depends_on = [
@@ -305,6 +310,7 @@ resource "kubernetes_manifest" "backup_cronjob" {
 }
 
 resource "kubernetes_manifest" "backup_service_account" {
+  provider = kubernetes
   manifest = yamldecode(split("---", file("${path.module}/../kubernetes/backup/backup-cronjob.yaml"))[1])
   
   depends_on = [
@@ -313,6 +319,7 @@ resource "kubernetes_manifest" "backup_service_account" {
 }
 
 resource "kubernetes_manifest" "backup_cluster_role" {
+  provider = kubernetes
   manifest = yamldecode(split("---", file("${path.module}/../kubernetes/backup/backup-cronjob.yaml"))[2])
   
   depends_on = [
@@ -321,6 +328,7 @@ resource "kubernetes_manifest" "backup_cluster_role" {
 }
 
 resource "kubernetes_manifest" "backup_cluster_role_binding" {
+  provider = kubernetes
   manifest = yamldecode(split("---", file("${path.module}/../kubernetes/backup/backup-cronjob.yaml"))[3])
   
   depends_on = [
@@ -329,6 +337,7 @@ resource "kubernetes_manifest" "backup_cluster_role_binding" {
 }
 
 resource "kubernetes_manifest" "backup_pvc" {
+  provider = kubernetes
   manifest = yamldecode(split("---", file("${path.module}/../kubernetes/backup/backup-cronjob.yaml"))[4])
   
   depends_on = [
