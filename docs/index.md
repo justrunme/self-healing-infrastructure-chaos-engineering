@@ -39,13 +39,33 @@
 
 </div>
 
-## 🔗 Quick Links
+## 🔗 **Quick Links**
 
-<div align="center">
+<div class="grid cards" markdown>
 
-[![GitHub Repository](https://img.shields.io/badge/GitHub-Repository-black?style=for-the-badge&logo=github)](https://github.com/justrunme/self-healing-infrastructure-chaos-engineering)
-[![Documentation](https://img.shields.io/badge/Documentation-Live-blue?style=for-the-badge&logo=gitbook)](https://justrunme.github.io/self-healing-infrastructure-chaos-engineering/)
-[![CI/CD Pipeline](https://img.shields.io/badge/CI%2FCD-GitHub_Actions-green?style=for-the-badge&logo=github-actions)](https://github.com/justrunme/self-healing-infrastructure-chaos-engineering/actions)
+-   :material-github:{ .lg .middle } **GitHub Repository**
+
+    ---
+
+    Source code, issues, and contributions
+
+    [![GitHub](https://img.shields.io/badge/GitHub-Repository-black?style=flat-square&logo=github)](https://github.com/justrunme/self-healing-infrastructure-chaos-engineering)
+
+-   :material-book-open:{ .lg .middle } **Live Documentation**
+
+    ---
+
+    Complete guide and API reference
+
+    [![Docs](https://img.shields.io/badge/Docs-Live-blue?style=flat-square&logo=gitbook)](https://justrunme.github.io/self-healing-infrastructure-chaos-engineering/)
+
+-   :material-play-circle:{ .lg .middle } **CI/CD Pipeline**
+
+    ---
+
+    Automated builds and deployments
+
+    [![CI](https://img.shields.io/badge/CI%2FCD-Actions-green?style=flat-square&logo=github-actions)](https://github.com/justrunme/self-healing-infrastructure-chaos-engineering/actions)
 
 </div>
 
