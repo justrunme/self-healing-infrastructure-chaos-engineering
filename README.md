@@ -202,6 +202,124 @@ kubectl apply -f kubernetes/kured/kured.yaml
 kubectl apply -f kubernetes/chaos-engineering/
 ```
 
+## 🔗 Accessing Services
+
+After deployment, you can access all services using port-forwarding:
+
+### 📊 **Monitoring Stack**
+
+#### **Grafana Dashboard**
+```bash
+# Access Grafana UI
+kubectl port-forward -n monitoring svc/prometheus-grafana 3000:3000
+# Open: http://localhost:3000
+# Default credentials: admin / admin
+```
+
+#### **Prometheus**
+```bash
+# Access Prometheus UI
+kubectl port-forward -n monitoring svc/prometheus-kube-prometheus-prometheus 9090:9090
+# Open: http://localhost:9090
+```
+
+#### **Alertmanager**
+```bash
+# Access Alertmanager UI
+kubectl port-forward -n monitoring svc/prometheus-kube-prometheus-alertmanager 9093:9093
+# Open: http://localhost:9093
+```
+
+### 🏥 **Self-Healing Controller**
+
+#### **Health & Metrics Endpoints**
+```bash
+# Health check
+kubectl port-forward -n self-healing svc/self-healing-controller 8080:8080
+# Health: http://localhost:8080/health
+# Metrics: http://localhost:8080/metrics
+# Ready: http://localhost:8080/ready
+```
+
+#### **Controller Logs**
+```bash
+# View controller logs
+kubectl logs -n self-healing -f deployment/self-healing-controller
+```
+
+### 🧪 **Test Application**
+
+#### **Nginx Test App**
+```bash
+# Access test application
+kubectl port-forward -n test-app svc/test-app 8081:80
+# Open: http://localhost:8081
+```
+
+### 🌪️ **Chaos Engineering**
+
+#### **Chaos Mesh Dashboard**
+```bash
+# Access Chaos Mesh UI
+kubectl port-forward -n chaos-engineering svc/chaos-mesh-dashboard 2333:2333
+# Open: http://localhost:2333
+```
+
+#### **Chaos Controller**
+```bash
+# Access Chaos Mesh controller
+kubectl port-forward -n chaos-engineering svc/chaos-mesh-controller-manager 10080:10080
+# Open: http://localhost:10080
+```
+
+### 🔧 **Kubernetes Dashboard (Optional)**
+
+```bash
+# Install Kubernetes Dashboard
+kubectl apply -f https://raw.githubusercontent.com/kubernetes/dashboard/v2.7.0/aio/deploy/recommended.yaml
+
+# Access Dashboard
+kubectl port-forward -n kubernetes-dashboard svc/kubernetes-dashboard 8443:443
+# Open: https://localhost:8443
+# Get token: kubectl -n kubernetes-dashboard create token admin-user
+```
+
+### 📋 **Useful Commands**
+
+#### **Check Service Status**
+```bash
+# Check all pods
+kubectl get pods --all-namespaces
+
+# Check services
+kubectl get svc --all-namespaces
+
+# Check deployments
+kubectl get deployments --all-namespaces
+```
+
+#### **Monitor Resources**
+```bash
+# Resource usage
+kubectl top pods --all-namespaces
+kubectl top nodes
+
+# Events
+kubectl get events --all-namespaces --sort-by='.lastTimestamp'
+```
+
+#### **Debug Issues**
+```bash
+# Check logs
+kubectl logs -n self-healing deployment/self-healing-controller
+kubectl logs -n monitoring deployment/prometheus-kube-prometheus-prometheus
+
+# Describe resources
+kubectl describe pod -n self-healing -l app=self-healing-controller
+kubectl describe svc -n monitoring prometheus-grafana
+```
+```
+
 ## 💼 Business Value & ROI
 
 ### 📈 **Quantifiable Benefits**
