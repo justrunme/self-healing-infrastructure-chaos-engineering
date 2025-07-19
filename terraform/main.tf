@@ -444,7 +444,7 @@ resource "kubernetes_deployment" "self_healing_controller" {
         container {
           image = var.self_healing_controller_image
           name  = "self-healing-controller"
-          image_pull_policy = "Never"
+          image_pull_policy = "IfNotPresent"
 
           port {
             container_port = 8080
