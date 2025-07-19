@@ -1,6 +1,6 @@
 # 🚀 Self-Healing Infrastructure with Chaos Engineering
 
-[![CI/CD Pipeline](https://github.com/justrunme/self-healing-infrastructure-chaos-engineering/workflows/CI%2FCD%20Pipeline/badge.svg)](https://github.com/justrunme/self-healing-infrastructure-chaos-engineering/actions/workflows/ci-cd.yml)
+[![CI/CD Pipeline](https://github.com/justrunme/self-healing-infrastructure-chaos-engineering/workflows/Self-Healing%20Infrastructure%20CI%2FCD/badge.svg)](https://github.com/justrunme/self-healing-infrastructure-chaos-engineering/actions/workflows/ci-cd.yml)
 [![Release](https://github.com/justrunme/self-healing-infrastructure-chaos-engineering/workflows/Release/badge.svg)](https://github.com/justrunme/self-healing-infrastructure-chaos-engineering/actions/workflows/release.yml)
 [![Docker Image](https://img.shields.io/badge/docker-latest-blue.svg)](https://github.com/justrunme/self-healing-infrastructure-chaos-engineering/packages)
 [![Terraform](https://img.shields.io/badge/terraform-1.0+-blue.svg)](https://www.terraform.io/)
