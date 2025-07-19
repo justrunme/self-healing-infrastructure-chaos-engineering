@@ -1,5 +1,6 @@
 # 🚀 Self-Healing Infrastructure with Chaos Engineering
 
+[![GitHub Pages](https://img.shields.io/badge/GitHub_Pages-Live_Documentation-blue?style=for-the-badge)](https://justrunme.github.io/self-healing-infrastructure-chaos-engineering/)
 [![CI/CD Pipeline](https://github.com/justrunme/self-healing-infrastructure-chaos-engineering/workflows/Self-Healing%20Infrastructure%20CI%2FCD/badge.svg)](https://github.com/justrunme/self-healing-infrastructure-chaos-engineering/actions/workflows/ci-cd.yml)
 [![Release](https://github.com/justrunme/self-healing-infrastructure-chaos-engineering/workflows/Release/badge.svg)](https://github.com/justrunme/self-healing-infrastructure-chaos-engineering/actions/workflows/release.yml)
 [![Docker Image](https://img.shields.io/badge/docker-latest-blue.svg)](https://github.com/justrunme/self-healing-infrastructure-chaos-engineering/packages)
@@ -174,6 +175,21 @@ This self-healing infrastructure is designed for real-world production environme
 - **Machine Learning Workloads**: Reliable execution of ML training and inference
 - **Scientific Computing**: High-availability computational resources
 - **Collaborative Research**: Shared infrastructure with isolated recovery
+
+## 📚 Documentation
+
+**📖 [Live Documentation](https://justrunme.github.io/self-healing-infrastructure-chaos-engineering/)** - Comprehensive documentation with interactive examples, architecture diagrams, and step-by-step guides.
+
+### 📋 Documentation Sections
+- **🏗️ Architecture**: System design and component overview
+- **🔄 Self-Healing**: Logic and controller implementation
+- **🎲 Chaos Engineering**: Failure testing and resilience validation
+- **🔄 CI/CD Pipeline**: Automated deployment and testing
+- **📊 Monitoring**: Prometheus and Grafana setup
+- **📸 Screenshots**: Visual guides and dashboards
+- **🔗 Resources**: Useful links and references
+
+---
 
 ## 🚀 Quick Start
 
