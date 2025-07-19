@@ -236,10 +236,45 @@ jobs:
           sudo install minikube-linux-amd64 /usr/local/bin/minikube
           minikube start --driver=docker --cpus=2 --memory=4096
 
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v2
+        with:
+          terraform_version: "1.0"
+
+      - name: Setup Docker
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build and deploy infrastructure
+        run: |
+          # Build Self-Healing Controller image
+          cd kubernetes/self-healing
+          docker build -t self-healing-controller:latest .
+          echo "Loading image into Minikube..."
+          minikube image load self-healing-controller:latest
+          cd ../..
+
+          # Deploy infrastructure with Terraform
+          cd terraform
+          terraform init
+          terraform plan -out=tfplan
+          terraform apply tfplan
+          cd ..
+
       - name: Wait for system to be ready
         run: |
           sleep 30
           minikube kubectl -- get pods --all-namespaces
+
+      - name: Wait for components to be ready
+        run: |
+          echo "Waiting for Self-Healing Controller..."
+          minikube kubectl -- wait --for=condition=ready pod -l app=self-healing-controller -n self-healing --timeout=600s
+          
+          echo "Waiting for test application..."
+          minikube kubectl -- wait --for=condition=ready pod -l app=test-app -n test-app --timeout=300s
+          
+          echo "Waiting for Prometheus stack..."
+          minikube kubectl -- wait --for=condition=ready pod -l app.kubernetes.io/name=prometheus -n monitoring --timeout=300s
 
       - name: Test Self-Healing Controller health
         run: |
