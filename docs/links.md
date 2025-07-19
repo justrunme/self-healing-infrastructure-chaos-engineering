@@ -205,16 +205,15 @@
 ## Contributing
 
 ### How to Contribute
-- **[Contributing Guidelines](CONTRIBUTING.md)** - Project contribution guide
-- **[Code of Conduct](CODE_OF_CONDUCT.md)** - Community guidelines
-- **[Issue Templates](.github/ISSUE_TEMPLATE/)** - Issue reporting templates
-- **[Pull Request Templates](.github/PULL_REQUEST_TEMPLATE.md)** - PR templates
+- **[GitHub Issues](https://github.com/justrunme/self-healing-infrastructure-chaos-engineering/issues)** - Report issues
+- **[GitHub Discussions](https://github.com/justrunme/self-healing-infrastructure-chaos-engineering/discussions)** - Ask questions
+- **[Pull Requests](https://github.com/justrunme/self-healing-infrastructure-chaos-engineering/pulls)** - Submit contributions
 
 ### Development Setup
-- **[Development Guide](DEVELOPMENT.md)** - Development setup guide
-- **[Testing Guide](TESTING.md)** - Testing procedures
-- **[Release Process](RELEASE.md)** - Release procedures
-- **[Maintenance Guide](MAINTENANCE.md)** - Maintenance procedures
+- **[README](README.md)** - Project overview and setup
+- **[Quick Start](QUICKSTART.md)** - Quick start guide
+- **[Architecture](architecture/overview.md)** - System architecture
+- **[Self-Healing](self-healing/logic.md)** - Self-healing documentation
 
 ## Support and Contact
 
@@ -233,10 +232,10 @@
 ## License and Legal
 
 ### License Information
-- **[MIT License](LICENSE)** - Project license
-- **[Contributor License Agreement](CLA.md)** - Contributor agreement
-- **[Privacy Policy](PRIVACY.md)** - Privacy policy
-- **[Terms of Service](TERMS.md)** - Terms of service
+- **[MIT License](https://github.com/justrunme/self-healing-infrastructure-chaos-engineering/blob/main/LICENSE)** - Project license
+- **[GitHub Repository](https://github.com/justrunme/self-healing-infrastructure-chaos-engineering)** - Source code
+- **[Releases](https://github.com/justrunme/self-healing-infrastructure-chaos-engineering/releases)** - Project releases
+- **[Actions](https://github.com/justrunme/self-healing-infrastructure-chaos-engineering/actions)** - CI/CD workflows
 
 ### Legal Resources
 - **[Open Source Licenses](https://opensource.org/licenses)** - License information

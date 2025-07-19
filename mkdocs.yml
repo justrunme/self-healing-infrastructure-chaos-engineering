@@ -47,19 +47,12 @@ nav:
   - Self-Healing:
     - Logic: self-healing/logic.md
     - Controller: self-healing/controller.md
-    - Recovery: self-healing/recovery.md
   - Chaos Engineering:
     - Overview: chaos-engineering/overview.md
-    - Experiments: chaos-engineering/experiments.md
-    - Tools: chaos-engineering/tools.md
   - CI/CD Pipeline:
     - Overview: ci-cd/overview.md
-    - Workflows: ci-cd/workflows.md
-    - Automation: ci-cd/automation.md
   - Monitoring:
     - Prometheus: monitoring/prometheus.md
-    - Grafana: monitoring/grafana.md
-    - Alerts: monitoring/alerts.md
   - Screenshots: screenshots.md
   - Links: links.md
 

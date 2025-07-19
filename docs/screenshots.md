@@ -8,7 +8,7 @@ This section showcases visual representations of the self-healing infrastructure
 
 ### 1. Kubernetes Cluster Overview
 
-![Kubernetes Cluster Dashboard](images/kubernetes-cluster-dashboard.png)
+![Kubernetes Cluster Dashboard](images/placeholder.png)
 
 **Description**: Main dashboard showing cluster health, node status, and resource utilization.
 
@@ -20,7 +20,7 @@ This section showcases visual representations of the self-healing infrastructure
 
 ### 2. Self-Healing Controller Dashboard
 
-![Self-Healing Dashboard](images/self-healing-dashboard.png)
+![Self-Healing Dashboard](images/placeholder.png)
 
 **Description**: Real-time monitoring of self-healing operations and recovery actions.
 
@@ -32,7 +32,7 @@ This section showcases visual representations of the self-healing infrastructure
 
 ### 3. Chaos Engineering Experiments
 
-![Chaos Experiments Dashboard](images/chaos-experiments-dashboard.png)
+![Chaos Experiments Dashboard](images/placeholder.png)
 
 **Description**: Overview of active chaos experiments and their impact on the system.
 
@@ -44,7 +44,7 @@ This section showcases visual representations of the self-healing infrastructure
 
 ### 4. Application Performance
 
-![Application Performance Dashboard](images/app-performance-dashboard.png)
+![Application Performance Dashboard](images/placeholder.png)
 
 **Description**: Application-specific metrics including response times, error rates, and throughput.
 
@@ -58,7 +58,7 @@ This section showcases visual representations of the self-healing infrastructure
 
 ### 1. System Architecture Diagram
 
-![System Architecture](images/system-architecture.png)
+![System Architecture](images/placeholder.png)
 
 **Description**: High-level architecture showing all components and their interactions.
 
@@ -71,7 +71,7 @@ This section showcases visual representations of the self-healing infrastructure
 
 ### 2. Network Topology
 
-![Network Topology](images/network-topology.png)
+![Network Topology](images/placeholder.png)
 
 **Description**: Network layout showing service mesh, load balancers, and connectivity.
 
@@ -83,7 +83,7 @@ This section showcases visual representations of the self-healing infrastructure
 
 ### 3. Data Flow Diagram
 
-![Data Flow](images/data-flow.png)
+![Data Flow](images/placeholder.png)
 
 **Description**: Data flow between different system components.
 
@@ -97,7 +97,7 @@ This section showcases visual representations of the self-healing infrastructure
 
 ### 1. Pod Failure Experiment
 
-![Pod Failure Experiment](images/pod-failure-experiment.png)
+![Pod Failure Experiment](images/placeholder.png)
 
 **Description**: Screenshot showing a pod failure experiment in progress.
 
@@ -109,7 +109,7 @@ This section showcases visual representations of the self-healing infrastructure
 
 ### 2. Network Partition Experiment
 
-![Network Partition](images/network-partition.png)
+![Network Partition](images/placeholder.png)
 
 **Description**: Network partition experiment showing connectivity issues.
 
@@ -121,7 +121,7 @@ This section showcases visual representations of the self-healing infrastructure
 
 ### 3. Node Failure Experiment
 
-![Node Failure](images/node-failure-experiment.png)
+![Node Failure](images/placeholder.png)
 
 **Description**: Node failure simulation showing cluster behavior.
 
@@ -135,7 +135,7 @@ This section showcases visual representations of the self-healing infrastructure
 
 ### 1. GitHub Actions Workflow
 
-![GitHub Actions](images/github-actions-workflow.png)
+![GitHub Actions](images/placeholder.png)
 
 **Description**: Screenshot of the CI/CD pipeline execution.
 
@@ -147,7 +147,7 @@ This section showcases visual representations of the self-healing infrastructure
 
 ### 2. Deployment Status
 
-![Deployment Status](images/deployment-status.png)
+![Deployment Status](images/placeholder.png)
 
 **Description**: Real-time deployment status and metrics.
 
@@ -161,7 +161,7 @@ This section showcases visual representations of the self-healing infrastructure
 
 ### 1. Alert Manager
 
-![Alert Manager](images/alert-manager.png)
+![Alert Manager](images/placeholder.png)
 
 **Description**: Alert management interface showing active alerts.
 
@@ -173,7 +173,7 @@ This section showcases visual representations of the self-healing infrastructure
 
 ### 2. Grafana Dashboards
 
-![Grafana Dashboard](images/grafana-dashboard.png)
+![Grafana Dashboard](images/placeholder.png)
 
 **Description**: Custom Grafana dashboard for infrastructure monitoring.
 
@@ -187,7 +187,7 @@ This section showcases visual representations of the self-healing infrastructure
 
 ### 1. Recovery Actions
 
-![Recovery Actions](images/recovery-actions.png)
+![Recovery Actions](images/placeholder.png)
 
 **Description**: Screenshot showing automatic recovery actions in progress.
 
@@ -199,7 +199,7 @@ This section showcases visual representations of the self-healing infrastructure
 
 ### 2. Health Checks
 
-![Health Checks](images/health-checks.png)
+![Health Checks](images/placeholder.png)
 
 **Description**: Health check results and status.
 
@@ -213,7 +213,7 @@ This section showcases visual representations of the self-healing infrastructure
 
 ### 1. System Performance
 
-![System Performance](images/system-performance.png)
+![System Performance](images/placeholder.png)
 
 **Description**: Overall system performance metrics.
 
@@ -225,7 +225,7 @@ This section showcases visual representations of the self-healing infrastructure
 
 ### 2. Recovery Metrics
 
-![Recovery Metrics](images/recovery-metrics.png)
+![Recovery Metrics](images/placeholder.png)
 
 **Description**: Self-healing performance and success rates.
 
@@ -239,7 +239,7 @@ This section showcases visual representations of the self-healing infrastructure
 
 ### 1. Security Dashboard
 
-![Security Dashboard](images/security-dashboard.png)
+![Security Dashboard](images/placeholder.png)
 
 **Description**: Security monitoring and compliance dashboard.
 
@@ -251,7 +251,7 @@ This section showcases visual representations of the self-healing infrastructure
 
 ### 2. Network Security
 
-![Network Security](images/network-security.png)
+![Network Security](images/placeholder.png)
 
 **Description**: Network security policies and monitoring.
 
@@ -265,7 +265,7 @@ This section showcases visual representations of the self-healing infrastructure
 
 ### 1. Debug Interface
 
-![Debug Interface](images/debug-interface.png)
+![Debug Interface](images/placeholder.png)
 
 **Description**: Debug interface for troubleshooting issues.
 
@@ -277,7 +277,7 @@ This section showcases visual representations of the self-healing infrastructure
 
 ### 2. Error Analysis
 
-![Error Analysis](images/error-analysis.png)
+![Error Analysis](images/placeholder.png)
 
 **Description**: Error analysis and root cause investigation.
 
@@ -291,7 +291,7 @@ This section showcases visual representations of the self-healing infrastructure
 
 ### 1. AI-Powered Monitoring
 
-![AI Monitoring](images/ai-monitoring.png)
+![AI Monitoring](images/placeholder.png)
 
 **Description**: AI-powered monitoring and prediction interface.
 
@@ -303,7 +303,7 @@ This section showcases visual representations of the self-healing infrastructure
 
 ### 2. Advanced Visualization
 
-![Advanced Visualization](images/advanced-visualization.png)
+![Advanced Visualization](images/placeholder.png)
 
 **Description**: Advanced visualization and analytics dashboard.
 
@@ -319,37 +319,37 @@ This section showcases visual representations of the self-healing infrastructure
 
 | Screenshot | Description | Link |
 |------------|-------------|------|
-| Cluster Overview | Main cluster dashboard | [View](images/kubernetes-cluster-dashboard.png) |
-| Node Status | Individual node metrics | [View](images/node-status.png) |
-| Pod Distribution | Pod placement and status | [View](images/pod-distribution.png) |
-| Service Mesh | Service mesh topology | [View](images/service-mesh.png) |
+| Cluster Overview | Main cluster dashboard | [View](images/placeholder.png) |
+| Node Status | Individual node metrics | [View](images/placeholder.png) |
+| Pod Distribution | Pod placement and status | [View](images/placeholder.png) |
+| Service Mesh | Service mesh topology | [View](images/placeholder.png) |
 
 ### Monitoring Screenshots
 
 | Screenshot | Description | Link |
 |------------|-------------|------|
-| Prometheus | Metrics collection interface | [View](images/prometheus.png) |
-| Grafana | Visualization dashboard | [View](images/grafana.png) |
-| Alert Manager | Alert management interface | [View](images/alert-manager.png) |
-| Metrics Explorer | Custom metrics analysis | [View](images/metrics-explorer.png) |
+| Prometheus | Metrics collection interface | [View](images/placeholder.png) |
+| Grafana | Visualization dashboard | [View](images/placeholder.png) |
+| Alert Manager | Alert management interface | [View](images/placeholder.png) |
+| Metrics Explorer | Custom metrics analysis | [View](images/placeholder.png) |
 
 ### Chaos Engineering Screenshots
 
 | Screenshot | Description | Link |
 |------------|-------------|------|
-| Experiment Dashboard | Chaos experiments overview | [View](images/chaos-dashboard.png) |
-| Pod Failure | Pod failure experiment | [View](images/pod-failure.png) |
-| Network Chaos | Network partition experiment | [View](images/network-chaos.png) |
-| Recovery Analysis | Post-experiment analysis | [View](images/recovery-analysis.png) |
+| Experiment Dashboard | Chaos experiments overview | [View](images/placeholder.png) |
+| Pod Failure | Pod failure experiment | [View](images/placeholder.png) |
+| Network Chaos | Network partition experiment | [View](images/placeholder.png) |
+| Recovery Analysis | Post-experiment analysis | [View](images/placeholder.png) |
 
 ### CI/CD Screenshots
 
 | Screenshot | Description | Link |
 |------------|-------------|------|
-| Pipeline Status | CI/CD pipeline execution | [View](images/pipeline-status.png) |
-| Deployment | Deployment progress | [View](images/deployment.png) |
-| Test Results | Test execution results | [View](images/test-results.png) |
-| Security Scan | Security scanning results | [View](images/security-scan.png) |
+| Pipeline Status | CI/CD pipeline execution | [View](images/placeholder.png) |
+| Deployment | Deployment progress | [View](images/placeholder.png) |
+| Test Results | Test execution results | [View](images/placeholder.png) |
+| Security Scan | Security scanning results | [View](images/placeholder.png) |
 
 ## Interactive Demos
 
