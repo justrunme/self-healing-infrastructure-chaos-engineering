@@ -248,6 +248,13 @@ resource "kubernetes_manifest" "chaos_mesh_deployment" {
   provider = kubernetes
   manifest = yamldecode(file("${path.module}/../kubernetes/chaos-engineering/chaos-mesh-deployment.yaml"))
   
+  # Игнорируем изменения в env переменных, которые могут быть конвертированы Kubernetes API
+  lifecycle {
+    ignore_changes = [
+      manifest["spec"]["template"]["spec"]["containers"][0]["env"]
+    ]
+  }
+  
   depends_on = [
     kubernetes_namespace.chaos_engineering
   ]

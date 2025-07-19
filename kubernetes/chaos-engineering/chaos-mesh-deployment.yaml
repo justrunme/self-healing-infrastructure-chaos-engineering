@@ -37,7 +37,7 @@ spec:
               name: metrics
           env:
             - name: WATCH_NAMESPACE
-              value: ""
+              value: "all"  # Следим за всеми namespace'ами
             - name: POD_NAME
               valueFrom:
                 fieldRef:
