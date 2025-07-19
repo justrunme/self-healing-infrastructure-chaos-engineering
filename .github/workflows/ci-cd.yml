@@ -197,7 +197,7 @@ jobs:
           kubectl wait --for=condition=ready pod -l app.kubernetes.io/name=prometheus -n monitoring --timeout=300s
           
           echo "Deploying Kured..."
-          latest=$(curl -s https://api.github.com/repos/kubereboot/kured/releases | jq -r '.[0].tag_name')
+          latest=$(curl -s https://api.github.com/repos/kubereboot/kured/releases/latest | jq -r '.tag_name')
           echo "Latest Kured version: $latest"
           curl -L -s "https://github.com/kubereboot/kured/releases/download/$latest/kured-$latest-dockerhub.yaml" | kubectl apply -f -
           
