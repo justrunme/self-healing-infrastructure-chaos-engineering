@@ -65,9 +65,8 @@ jobs:
       - name: Validate Terraform
         run: |
           cd terraform
-          terraform init || echo "Terraform init failed"
-          terraform validate || echo "Terraform validation failed"
-          terraform plan -out=tfplan || echo "Terraform plan failed"
+          terraform init
+          terraform validate
 
       - name: Upload security reports
         uses: actions/upload-artifact@v4
