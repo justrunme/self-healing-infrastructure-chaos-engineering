@@ -169,19 +169,40 @@ jobs:
           terraform apply -auto-approve tfplan
 
       # 3.6 Wait for deployments to be ready
-      - name: Wait for deployments to be ready
+      - name: Wait for Self-Healing Controller to be ready
         run: |
-          echo "Waiting for Self-Healing Controller to be ready..."
-          kubectl wait --namespace self-healing \
-            --for=condition=available deployment/self-healing-controller \
-            --timeout=120s
+          echo "🚀 Waiting for Self-Healing Controller to be ready..."
+          kubectl rollout status deployment/self-healing-controller \
+            -n self-healing \
+            --timeout=60s
+      
+      - name: Wait for test-app to be ready
+        run: |
+          echo "🚀 Waiting for test-app to be ready..."
+          kubectl rollout status deployment/test-app \
+            -n test-app \
+            --timeout=60s
+      
+      # 3.7 Debug test-app on failure
+      - name: Debug test-app (on failure)
+        if: failure()
+        run: |
+          echo "=== Pods in test-app namespace ==="
+          kubectl get pods -n test-app -o wide
           
-          echo "Waiting for test-app to be ready..."
-          kubectl wait --namespace test-app \
-            --for=condition=available deployment/test-app \
-            --timeout=120s
+          echo "=== Describe Deployment ==="
+          kubectl describe deployment/test-app -n test-app
+          
+          echo "=== Describe Pods ==="
+          kubectl describe pods -l app=test-app -n test-app
+          
+          echo "=== Logs from test-app pods ==="
+          kubectl logs -l app=test-app -n test-app --tail=50 || echo "No logs available"
+          
+          echo "=== Events in test-app namespace ==="
+          kubectl get events -n test-app --sort-by='.lastTimestamp' | tail -20
 
-      # 3.7 Basic smoke test
+      # 3.8 Basic smoke test
       - name: Smoke Test
         run: |
           kubectl get ns self-healing monitoring chaos-engineering

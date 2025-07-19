@@ -590,7 +590,7 @@ resource "kubernetes_deployment" "test_app" {
   }
 
   spec {
-    replicas = 3
+    replicas = 2  # Уменьшаем до min_replicas HPA
 
     selector {
       match_labels = {
@@ -631,9 +631,9 @@ resource "kubernetes_deployment" "test_app" {
               path = "/"
               port = 80
             }
-            initial_delay_seconds = 30
+            initial_delay_seconds = 15  # Уменьшаем задержку
             period_seconds        = 10
-            timeout_seconds       = 5
+            timeout_seconds       = 3   # Уменьшаем таймаут
             failure_threshold     = 3
             success_threshold     = 1
           }
@@ -643,10 +643,10 @@ resource "kubernetes_deployment" "test_app" {
               path = "/"
               port = 80
             }
-            initial_delay_seconds = 5
-            period_seconds        = 5
-            timeout_seconds       = 3
-            failure_threshold     = 3
+            initial_delay_seconds = 2  # Уменьшаем задержку
+            period_seconds        = 3  # Уменьшаем период
+            timeout_seconds       = 2  # Уменьшаем таймаут
+            failure_threshold     = 2  # Уменьшаем порог ошибок
             success_threshold     = 1
           }
 
