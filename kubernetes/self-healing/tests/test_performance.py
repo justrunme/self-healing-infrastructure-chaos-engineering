@@ -23,7 +23,7 @@ class TestSelfHealingPerformance(unittest.TestCase):
         """Set up test environment"""
         cls.k8s_client = None
         cls.base_url = "http://localhost:8081"
-        
+
         # Try to initialize Kubernetes client
         try:
             config.load_incluster_config()
@@ -33,7 +33,7 @@ class TestSelfHealingPerformance(unittest.TestCase):
             except config.ConfigException:
                 # Kubernetes not available, tests will be skipped
                 return
-        
+
         cls.k8s_client = client.CoreV1Api()
 
     def _skip_if_no_k8s(self):
@@ -132,7 +132,7 @@ class TestSelfHealingPerformance(unittest.TestCase):
     def test_pod_creation_performance(self):
         """Test pod creation performance"""
         self._skip_if_no_k8s()
-        
+
         def create_test_pod(pod_name):
             start_time = time.time()
             try:
@@ -196,7 +196,7 @@ class TestSelfHealingPerformance(unittest.TestCase):
     def test_memory_usage_under_load(self):
         """Test memory usage under load"""
         self._skip_if_no_k8s()
-        
+
         # Get initial memory usage
         initial_memory = self._get_pod_memory_usage("self-healing-controller", "self-healing")
 
@@ -225,7 +225,7 @@ class TestSelfHealingPerformance(unittest.TestCase):
     def test_cpu_usage_under_load(self):
         """Test CPU usage under load"""
         self._skip_if_no_k8s()
-        
+
         # Get initial CPU usage
         initial_cpu = self._get_pod_cpu_usage("self-healing-controller", "self-healing")
 
@@ -277,7 +277,7 @@ class TestSelfHealingPerformance(unittest.TestCase):
     def test_concurrent_pod_failures(self):
         """Test handling of concurrent pod failures"""
         self._skip_if_no_k8s()
-        
+
         def create_failing_pod(pod_name):
             try:
                 pod = client.V1Pod(

@@ -22,7 +22,7 @@ class TestSelfHealingInfrastructure(unittest.TestCase):
         cls.k8s_client = None
         cls.apps_client = None
         cls.base_url = "http://localhost:8081"
-        
+
         # Try to initialize Kubernetes client
         try:
             config.load_incluster_config()
@@ -32,7 +32,7 @@ class TestSelfHealingInfrastructure(unittest.TestCase):
             except config.ConfigException:
                 # Kubernetes not available, tests will be skipped
                 return
-        
+
         cls.k8s_client = client.CoreV1Api()
         cls.apps_client = client.AppsV1Api()
 
@@ -105,7 +105,7 @@ class TestSelfHealingInfrastructure(unittest.TestCase):
     def test_namespaces_exist(self):
         """Test that all required namespaces exist"""
         self._skip_if_no_k8s()
-        
+
         required_namespaces = ["self-healing", "test-app", "monitoring", "chaos-engineering", "kured"]
 
         namespaces = self.k8s_client.list_namespace()
@@ -117,7 +117,7 @@ class TestSelfHealingInfrastructure(unittest.TestCase):
     def test_self_healing_controller_pod_running(self):
         """Test that Self-Healing Controller pod is running"""
         self._skip_if_no_k8s()
-        
+
         pods = self.k8s_client.list_namespaced_pod(
             namespace="self-healing", label_selector="app=self-healing-controller"
         )
@@ -130,7 +130,7 @@ class TestSelfHealingInfrastructure(unittest.TestCase):
     def test_test_application_pods_running(self):
         """Test that Test Application pods are running"""
         self._skip_if_no_k8s()
-        
+
         pods = self.k8s_client.list_namespaced_pod(namespace="test-app", label_selector="app=test-app")
 
         self.assertGreater(len(pods.items), 0, "No Test Application pods found")
@@ -141,7 +141,7 @@ class TestSelfHealingInfrastructure(unittest.TestCase):
     def test_prometheus_pods_running(self):
         """Test that Prometheus pods are running"""
         self._skip_if_no_k8s()
-        
+
         pods = self.k8s_client.list_namespaced_pod(
             namespace="monitoring", label_selector="app.kubernetes.io/name=prometheus"
         )
@@ -154,7 +154,7 @@ class TestSelfHealingInfrastructure(unittest.TestCase):
     def test_chaos_mesh_pods_running(self):
         """Test that Chaos Mesh pods are running"""
         self._skip_if_no_k8s()
-        
+
         pods = self.k8s_client.list_namespaced_pod(namespace="chaos-engineering", label_selector="app=chaos-mesh")
 
         self.assertGreater(len(pods.items), 0, "No Chaos Mesh pods found")
@@ -165,7 +165,7 @@ class TestSelfHealingInfrastructure(unittest.TestCase):
     def test_services_exist(self):
         """Test that all required services exist"""
         self._skip_if_no_k8s()
-        
+
         required_services = [
             ("self-healing", "self-healing-controller"),
             ("test-app", "test-app"),
@@ -184,7 +184,7 @@ class TestSelfHealingInfrastructure(unittest.TestCase):
     def test_configmaps_exist(self):
         """Test that all required ConfigMaps exist"""
         self._skip_if_no_k8s()
-        
+
         required_configmaps = [
             ("self-healing", "self-healing-config"),
             ("monitoring", "prometheus-alerts"),
@@ -202,7 +202,7 @@ class TestSelfHealingInfrastructure(unittest.TestCase):
     def test_secrets_exist(self):
         """Test that all required Secrets exist"""
         self._skip_if_no_k8s()
-        
+
         required_secrets = [("monitoring", "slack-secret"), ("self-healing", "self-healing-secret")]
 
         for namespace, secret_name in required_secrets:
@@ -214,14 +214,14 @@ class TestSelfHealingInfrastructure(unittest.TestCase):
     def test_network_policies_exist(self):
         """Test that Network Policies exist"""
         self._skip_if_no_k8s()
-        
+
         network_policies = self.k8s_client.list_namespaced_network_policy(namespace="self-healing")
         self.assertGreater(len(network_policies.items), 0, "No Network Policies found in self-healing namespace")
 
     def test_resource_limits_set(self):
         """Test that resource limits are set on pods"""
         self._skip_if_no_k8s()
-        
+
         pods = self.k8s_client.list_namespaced_pod(
             namespace="self-healing", label_selector="app=self-healing-controller"
         )
@@ -238,7 +238,7 @@ class TestSelfHealingInfrastructure(unittest.TestCase):
     def test_health_checks_configured(self):
         """Test that health checks are configured"""
         self._skip_if_no_k8s()
-        
+
         pods = self.k8s_client.list_namespaced_pod(
             namespace="self-healing", label_selector="app=self-healing-controller"
         )
@@ -255,7 +255,7 @@ class TestSelfHealingInfrastructure(unittest.TestCase):
     def test_security_context_configured(self):
         """Test that security context is configured"""
         self._skip_if_no_k8s()
-        
+
         pods = self.k8s_client.list_namespaced_pod(
             namespace="self-healing", label_selector="app=self-healing-controller"
         )
@@ -268,7 +268,7 @@ class TestSelfHealingInfrastructure(unittest.TestCase):
     def test_backup_cronjob_exists(self):
         """Test that backup CronJob exists"""
         self._skip_if_no_k8s()
-        
+
         cronjobs = self.k8s_client.list_namespaced_cron_job(
             namespace="monitoring", field_selector="metadata.name=infrastructure-backup"
         )
@@ -277,7 +277,7 @@ class TestSelfHealingInfrastructure(unittest.TestCase):
     def test_chaos_experiments_exist(self):
         """Test that Chaos Experiments exist"""
         self._skip_if_no_k8s()
-        
+
         # This test would check for Chaos Mesh experiments
         # Implementation depends on Chaos Mesh API
         pass
