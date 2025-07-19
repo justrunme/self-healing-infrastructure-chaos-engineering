@@ -1,0 +1,36 @@
+name: Setup Minikube
+
+on:
+  workflow_call:
+    outputs:
+      kubeconfig:
+        description: "Path to kubeconfig"
+        value: ${{ jobs.setup.outputs.kubeconfig }}
+
+jobs:
+  setup:
+    runs-on: ubuntu-latest
+    outputs:
+      kubeconfig: ${{ steps.setup.outputs.kubeconfig }}
+    steps:
+      - name: Install Minikube
+        run: |
+          curl -LO https://storage.googleapis.com/minikube/releases/latest/minikube-linux-amd64
+          sudo install minikube-linux-amd64 /usr/local/bin/minikube
+      
+      - name: Start Minikube
+        run: |
+          minikube start --driver=docker --cpus=2 --memory=4096
+      
+      - name: Configure Kubeconfig
+        id: setup
+        run: |
+          mkdir -p $HOME/.kube
+          minikube update-context
+          kubectl config current-context
+          # Set both KUBECONFIG and KUBE_CONFIG_PATH for Terraform compatibility
+          echo "KUBECONFIG=$HOME/.kube/config" >> $GITHUB_ENV
+          echo "KUBE_CONFIG_PATH=$HOME/.kube/config" >> $GITHUB_ENV
+          echo "kubeconfig=$HOME/.kube/config" >> $GITHUB_OUTPUT
+          echo "Current KUBECONFIG: $KUBECONFIG"
+          echo "Current KUBE_CONFIG_PATH: $KUBE_CONFIG_PATH" 

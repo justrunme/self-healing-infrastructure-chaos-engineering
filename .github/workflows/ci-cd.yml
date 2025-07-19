@@ -31,17 +31,19 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Setup cache directories
-        run: |
-          mkdir -p ~/.cache/pip
-          mkdir -p ~/.terraform.d/plugin-cache
-      - name: Cache dependencies
+      - name: Cache pip dependencies
+        if: matrix.tool == 'python'
         uses: actions/cache@v3
         with:
-          path: |
-            ~/.cache/pip
-            ~/.terraform.d/plugin-cache
-          key: ${{ runner.os }}-deps-${{ matrix.tool }}-${{ hashFiles('**/*.txt','terraform/*.tf') }}
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-${{ hashFiles('kubernetes/self-healing/requirements.txt') }}
+      
+      - name: Cache Terraform plugins
+        if: matrix.tool == 'terraform'
+        uses: actions/cache@v3
+        with:
+          path: ~/.terraform.d/plugin-cache
+          key: ${{ runner.os }}-tf-plugins-${{ hashFiles('terraform/**/*.tf') }}
 
       - name: Setup Python
         if: matrix.tool == 'python'
@@ -57,10 +59,18 @@ jobs:
       - name: Install & Lint Python
         if: matrix.tool == 'python'
         run: |
-          pip install flake8 black isort pytest
+          pip install flake8 black isort pytest pytest-cov pytest-mock
           black --check kubernetes/self-healing/
-          flake8 kubernetes/self-healing/
-          cd kubernetes/self-healing && python -m pytest tests/ -v
+          isort --check-only kubernetes/self-healing/
+          flake8 kubernetes/self-healing/ --max-line-length=120
+          cd kubernetes/self-healing && python -m pytest tests/ -v --cov=. --cov-report=xml --cov-report=html
+      
+      - name: Upload coverage report
+        if: matrix.tool == 'python'
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-report
+          path: kubernetes/self-healing/htmlcov/
       - name: Configure Terraform plugin cache
         if: matrix.tool == 'terraform'
         run: |
@@ -110,23 +120,8 @@ jobs:
       - uses: actions/checkout@v4
 
       # 3.1 Setup Kubernetes
-      - name: Install Minikube
-        run: |
-          curl -LO https://storage.googleapis.com/minikube/releases/latest/minikube-linux-amd64
-          sudo install minikube-linux-amd64 /usr/local/bin/minikube
-      - name: Start Minikube
-        run: |
-          minikube start --driver=docker --cpus=2 --memory=4096
-      - name: Configure Kubeconfig
-        run: |
-          mkdir -p $HOME/.kube
-          minikube update-context
-          kubectl config current-context
-          # Set both KUBECONFIG and KUBE_CONFIG_PATH for Terraform compatibility
-          echo "KUBECONFIG=$HOME/.kube/config" >> $GITHUB_ENV
-          echo "KUBE_CONFIG_PATH=$HOME/.kube/config" >> $GITHUB_ENV
-          echo "Current KUBECONFIG: $KUBECONFIG"
-          echo "Current KUBE_CONFIG_PATH: $KUBE_CONFIG_PATH"
+      - name: Setup Minikube
+        uses: ./.github/actions/setup-minikube
 
       # 3.2 Cache Terraform plugins
       - uses: actions/cache@v3
@@ -161,23 +156,8 @@ jobs:
     needs: infra-deploy
     steps:
       - uses: actions/checkout@v4
-      - name: Install Minikube
-        run: |
-          curl -LO https://storage.googleapis.com/minikube/releases/latest/minikube-linux-amd64
-          sudo install minikube-linux-amd64 /usr/local/bin/minikube
-      - name: Start Minikube
-        run: |
-          minikube start --driver=docker --cpus=2 --memory=4096
-      - name: Configure Kubeconfig
-        run: |
-          mkdir -p $HOME/.kube
-          minikube update-context
-          kubectl config current-context
-          # Set both KUBECONFIG and KUBE_CONFIG_PATH for Terraform compatibility
-          echo "KUBECONFIG=$HOME/.kube/config" >> $GITHUB_ENV
-          echo "KUBE_CONFIG_PATH=$HOME/.kube/config" >> $GITHUB_ENV
-          echo "Current KUBECONFIG: $KUBECONFIG"
-          echo "Current KUBE_CONFIG_PATH: $KUBE_CONFIG_PATH
+      - name: Setup Minikube
+        uses: ./.github/actions/setup-minikube
 
       - name: Load Docker image
         run: |
@@ -229,23 +209,8 @@ jobs:
     needs: infra-deploy
     steps:
       - uses: actions/checkout@v4
-      - name: Install Minikube
-        run: |
-          curl -LO https://storage.googleapis.com/minikube/releases/latest/minikube-linux-amd64
-          sudo install minikube-linux-amd64 /usr/local/bin/minikube
-      - name: Start Minikube
-        run: |
-          minikube start --driver=docker --cpus=2 --memory=4096
-      - name: Configure Kubeconfig
-        run: |
-          mkdir -p $HOME/.kube
-          minikube update-context
-          kubectl config current-context
-          # Set both KUBECONFIG and KUBE_CONFIG_PATH for Terraform compatibility
-          echo "KUBECONFIG=$HOME/.kube/config" >> $GITHUB_ENV
-          echo "KUBE_CONFIG_PATH=$HOME/.kube/config" >> $GITHUB_ENV
-          echo "Current KUBECONFIG: $KUBECONFIG"
-          echo "Current KUBE_CONFIG_PATH: $KUBE_CONFIG_PATH
+      - name: Setup Minikube
+        uses: ./.github/actions/setup-minikube
 
       - name: Load Docker image
         run: |
@@ -286,23 +251,8 @@ jobs:
     needs: [self-healing-test, monitoring-test]
     steps:
       - uses: actions/checkout@v4
-      - name: Install Minikube
-        run: |
-          curl -LO https://storage.googleapis.com/minikube/releases/latest/minikube-linux-amd64
-          sudo install minikube-linux-amd64 /usr/local/bin/minikube
-      - name: Start Minikube
-        run: |
-          minikube start --driver=docker --cpus=2 --memory=4096
-      - name: Configure Kubeconfig
-        run: |
-          mkdir -p $HOME/.kube
-          minikube update-context
-          kubectl config current-context
-          # Set both KUBECONFIG and KUBE_CONFIG_PATH for Terraform compatibility
-          echo "KUBECONFIG=$HOME/.kube/config" >> $GITHUB_ENV
-          echo "KUBE_CONFIG_PATH=$HOME/.kube/config" >> $GITHUB_ENV
-          echo "Current KUBECONFIG: $KUBECONFIG"
-          echo "Current KUBE_CONFIG_PATH: $KUBE_CONFIG_PATH
+      - name: Setup Minikube
+        uses: ./.github/actions/setup-minikube
 
       - name: Test Kured integration
         run: |
@@ -330,23 +280,8 @@ jobs:
     needs: integration-tests
     steps:
       - uses: actions/checkout@v4
-      - name: Install Minikube
-        run: |
-          curl -LO https://storage.googleapis.com/minikube/releases/latest/minikube-linux-amd64
-          sudo install minikube-linux-amd64 /usr/local/bin/minikube
-      - name: Start Minikube
-        run: |
-          minikube start --driver=docker --cpus=2 --memory=4096
-      - name: Configure Kubeconfig
-        run: |
-          mkdir -p $HOME/.kube
-          minikube update-context
-          kubectl config current-context
-          # Set both KUBECONFIG and KUBE_CONFIG_PATH for Terraform compatibility
-          echo "KUBECONFIG=$HOME/.kube/config" >> $GITHUB_ENV
-          echo "KUBE_CONFIG_PATH=$HOME/.kube/config" >> $GITHUB_ENV
-          echo "Current KUBECONFIG: $KUBECONFIG"
-          echo "Current KUBE_CONFIG_PATH: $KUBE_CONFIG_PATH
+      - name: Setup Minikube
+        uses: ./.github/actions/setup-minikube
 
       - name: Test resource limits
         run: |
@@ -396,23 +331,8 @@ jobs:
     if: always()
     steps:
       - uses: actions/checkout@v4
-      - name: Install Minikube
-        run: |
-          curl -LO https://storage.googleapis.com/minikube/releases/latest/minikube-linux-amd64
-          sudo install minikube-linux-amd64 /usr/local/bin/minikube
-      - name: Start Minikube
-        run: |
-          minikube start --driver=docker --cpus=2 --memory=4096
-      - name: Configure Kubeconfig
-        run: |
-          mkdir -p $HOME/.kube
-          minikube update-context
-          kubectl config current-context
-          # Set both KUBECONFIG and KUBE_CONFIG_PATH for Terraform compatibility
-          echo "KUBECONFIG=$HOME/.kube/config" >> $GITHUB_ENV
-          echo "KUBE_CONFIG_PATH=$HOME/.kube/config" >> $GITHUB_ENV
-          echo "Current KUBECONFIG: $KUBECONFIG"
-          echo "Current KUBE_CONFIG_PATH: $KUBE_CONFIG_PATH
+      - name: Setup Minikube
+        uses: ./.github/actions/setup-minikube
 
       - name: Collect logs
         run: |

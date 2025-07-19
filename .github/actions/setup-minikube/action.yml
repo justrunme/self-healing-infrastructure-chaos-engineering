@@ -1,0 +1,28 @@
+name: 'Setup Minikube'
+description: 'Install and configure Minikube with Docker driver'
+
+runs:
+  using: "composite"
+  steps:
+    - name: Install Minikube
+      shell: bash
+      run: |
+        curl -LO https://storage.googleapis.com/minikube/releases/latest/minikube-linux-amd64
+        sudo install minikube-linux-amd64 /usr/local/bin/minikube
+    
+    - name: Start Minikube
+      shell: bash
+      run: |
+        minikube start --driver=docker --cpus=2 --memory=4096
+    
+    - name: Configure Kubeconfig
+      shell: bash
+      run: |
+        mkdir -p $HOME/.kube
+        minikube update-context
+        kubectl config current-context
+        # Set both KUBECONFIG and KUBE_CONFIG_PATH for Terraform compatibility
+        echo "KUBECONFIG=$HOME/.kube/config" >> $GITHUB_ENV
+        echo "KUBE_CONFIG_PATH=$HOME/.kube/config" >> $GITHUB_ENV
+        echo "Current KUBECONFIG: $KUBECONFIG"
+        echo "Current KUBE_CONFIG_PATH: $KUBE_CONFIG_PATH" 
