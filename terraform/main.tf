@@ -244,21 +244,12 @@ resource "helm_release" "prometheus_stack" {
 # This ensures proper deployment in CI/CD environment
 
 # Развертывание Chaos Mesh
-resource "kubernetes_manifest" "chaos_mesh_namespace" {
-  provider = kubernetes
-  manifest = yamldecode(file("${path.module}/../kubernetes/chaos-engineering/chaos-mesh-namespace.yaml"))
-  
-  depends_on = [
-    kubernetes_namespace.chaos_engineering
-  ]
-}
-
 resource "kubernetes_manifest" "chaos_mesh_deployment" {
   provider = kubernetes
   manifest = yamldecode(file("${path.module}/../kubernetes/chaos-engineering/chaos-mesh-deployment.yaml"))
   
   depends_on = [
-    kubernetes_manifest.chaos_mesh_namespace
+    kubernetes_namespace.chaos_engineering
   ]
 }
 
