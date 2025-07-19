@@ -35,7 +35,12 @@ output "prometheus_stack_name" {
 
 output "kured_release_name" {
   description = "Name of the Kured release"
-  value       = "kured-disabled"
+  value       = "kured"
+}
+
+output "kured_version" {
+  description = "Kured version deployed"
+  value       = try(local.kured_latest, "latest")
 }
 
 output "self_healing_controller_service" {
