@@ -1,6 +1,7 @@
 name: Release
 
 on:
+  workflow_dispatch:
   push:
     tags:
       - 'v*'
@@ -9,16 +10,19 @@ env:
   REGISTRY: ghcr.io
   IMAGE_NAME: ${{ github.repository }}/self-healing-controller
 
+permissions:
+  contents: write
+  packages: write
+
 jobs:
   release:
     name: Create Release
     runs-on: ubuntu-latest
-    permissions:
-      contents: write
-      packages: write
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
@@ -63,12 +67,11 @@ jobs:
           draft: false
           prerelease: false
           body: |
-            ## Self-Healing Infra Release ${{ github.ref_name }}
+            ## Release ${{ github.ref_name }}
             
             ### 🐳 Images
             - **latest**: `${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest`
             - **version**: `${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.ref_name }}`
-            - **major**: `${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:v${{ github.ref_name }}`
             
             ### 📦 What's New
             - Self-Healing improvements
@@ -84,27 +87,27 @@ jobs:
             ```
             
             ### 📋 Changelog
-            [Commits](https://github.com/${{ github.repository }}/compare/v${{ github.ref_name }}...main)
+            [Compare changes](https://github.com/${{ github.repository }}/compare/v${{ github.ref_name }}...main)
 
-      - name: Update Terraform variables
+      - name: Update Terraform vars
         run: |
           if [ -f "terraform/terraform.tfvars" ]; then
             sed -i.bak \
               "s|self_healing_controller_image = \".*\"|self_healing_controller_image = \"${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.ref_name }}\"|" \
               terraform/terraform.tfvars
-            echo "Updated terraform/terraform.tfvars to ${{ github.ref_name }}"
+            echo "Updated terraform.tfvars to ${{ github.ref_name }}"
           else
-            echo "terraform/terraform.tfvars not found, skipping update"
+            echo "terraform.tfvars not found, skipping update"
           fi
 
-      - name: Commit Terraform updates
+      - name: Commit Terraform update
         run: |
           if [ -f "terraform/terraform.tfvars" ]; then
-            git config --local user.email "action@github.com"
-            git config --local user.name "GitHub Action"
+            git config user.email "action@github.com"
+            git config user.name "GitHub Action"
             git add terraform/terraform.tfvars
-            git commit -m "chore: bump TF vars for release ${{ github.ref_name }}" || echo "No changes to commit"
+            git commit -m "chore: bump TF image to ${{ github.ref_name }}" || echo "No changes"
             git push
           else
-            echo "terraform/terraform.tfvars not found, skipping commit"
+            echo "terraform.tfvars not found, skipping commit"
           fi 
