@@ -606,12 +606,6 @@ resource "kubernetes_deployment" "test_app" {
       }
 
       spec {
-        # Создаём пустой каталог, в который nginx сможет писать
-        volume {
-          name = "nginx-cache"
-          empty_dir {}
-        }
-
         container {
           image = "nginx:1.21-alpine"
           name  = "test-app"
@@ -619,12 +613,6 @@ resource "kubernetes_deployment" "test_app" {
           port {
             container_port = 80
             name          = "http"
-          }
-
-          # Монтируем volume внутрь контейнера для nginx кеша
-          volume_mount {
-            name       = "nginx-cache"
-            mount_path = "/var/cache/nginx"
           }
 
           resources {
@@ -662,20 +650,7 @@ resource "kubernetes_deployment" "test_app" {
             success_threshold     = 1
           }
 
-          security_context {
-            allow_privilege_escalation = false
-            read_only_root_filesystem  = false
-            run_as_non_root            = false  # Разрешаем запуск от root для nginx
-            run_as_user                = 0      # Запускаем от root
-            capabilities {
-              drop = ["ALL"]
-            }
-          }
-        }
-
-        # Запускаем контейнер от root для доступа к /var/run
-        security_context {
-          run_as_user = 0
+          # nginx работает от root по умолчанию - никаких проблем с permissions
         }
       }
     }
