@@ -40,7 +40,7 @@ output "kured_release_name" {
 
 output "kured_version" {
   description = "Kured version deployed"
-  value       = try(local.kured_latest, "latest")
+  value       = "deployed-via-github-actions"
 }
 
 output "self_healing_controller_service" {

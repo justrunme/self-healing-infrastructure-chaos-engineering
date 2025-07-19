@@ -9,14 +9,7 @@ terraform {
       source  = "hashicorp/helm"
       version = "~> 2.0"
     }
-    http = {
-      source  = "hashicorp/http"
-      version = "~> 3.0"
-    }
-    null = {
-      source  = "hashicorp/null"
-      version = "~> 3.0"
-    }
+
   }
 }
 
@@ -202,30 +195,8 @@ resource "helm_release" "prometheus_stack" {
   ]
 }
 
-# Получение последней версии Kured
-data "http" "kured_releases" {
-  url = "https://api.github.com/repos/kubereboot/kured/releases"
-}
-
-locals {
-  kured_latest = jsondecode(data.http.kured_releases.response_body)[0].tag_name
-}
-
-# Получение манифеста Kured
-data "http" "kured_manifest" {
-  url = "https://github.com/kubereboot/kured/releases/download/${local.kured_latest}/kured-${local.kured_latest}-dockerhub.yaml"
-}
-
-# Развертывание Kured через kubectl apply
-resource "null_resource" "kured_deployment" {
-  provisioner "local-exec" {
-    command = "kubectl apply -f 'https://github.com/kubereboot/kured/releases/download/${local.kured_latest}/kured-${local.kured_latest}-dockerhub.yaml'"
-  }
-  
-  depends_on = [
-    kubernetes_namespace.kured
-  ]
-}
+# Kured will be deployed via GitHub Actions workflow
+# This ensures proper deployment in CI/CD environment
 
 # Создание ServiceAccount для Self-Healing Controller
 resource "kubernetes_service_account" "self_healing_controller" {
