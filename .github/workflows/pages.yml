@@ -77,6 +77,12 @@ jobs:
             
             # Extract internal links and check if they exist
             grep -o '\[.*\]([^)]*\.md)' "$file" | sed 's/.*(\(.*\))/\1/' | while read -r link; do
+              # Skip if link is empty
+              if [[ -z "$link" ]]; then
+                continue
+              fi
+              
+              # Check if file exists
               if [[ ! -f "docs/$link" ]]; then
                 echo "❌ Broken link in $file: $link"
                 exit 1
@@ -129,10 +135,10 @@ jobs:
       - name: 📦 Install documentation tools
         run: |
           echo "📦 Installing documentation tools..."
-          pip install markdown-link-check
-          pip install markdownlint-cli
           pip install beautifulsoup4
           pip install requests
+          pip install markdown
+          pip install pyyaml
 
       - name: 🔧 Optimize markdown files
         run: |
@@ -210,11 +216,13 @@ jobs:
         run: |
           echo "🔍 Optimizing for SEO..."
           
-          # Add meta tags to index.md
+          # Add meta tags to index.md if not already present
           if [[ -f "docs/index.md" ]]; then
-            # Create SEO-optimized version
-            temp_file=$(mktemp)
-            cat > "$temp_file" << 'EOF'
+            # Check if SEO metadata already exists
+            if ! grep -q "og_title" docs/index.md; then
+              # Create SEO-optimized version
+              temp_file=$(mktemp)
+              cat > "$temp_file" << 'EOF'
           ---
           title: "Self-Healing Infrastructure with Chaos Engineering"
           description: "A comprehensive Kubernetes-based self-healing infrastructure that automatically detects and recovers from failures, with integrated monitoring, chaos engineering, and automated node management."
@@ -228,8 +236,12 @@ jobs:
           twitter_card: "summary_large_image"
           ---
           EOF
-            tail -n +2 docs/index.md >> "$temp_file"
-            mv "$temp_file" docs/index.md
+              tail -n +2 docs/index.md >> "$temp_file"
+              mv "$temp_file" docs/index.md
+              echo "✅ SEO metadata added to index.md"
+            else
+              echo "✅ SEO metadata already present in index.md"
+            fi
           fi
           
           echo "✅ SEO optimization completed"
