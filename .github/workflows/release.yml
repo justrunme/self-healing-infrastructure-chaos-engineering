@@ -53,54 +53,58 @@ jobs:
           cache-to: type=gha,mode=max
           platforms: linux/amd64,linux/arm64
 
-      - name: Create Release
+      - name: Create GitHub Release
         uses: actions/create-release@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          tag_name: ${{ github.ref }}
-          release_name: Release ${{ github.ref }}
+          tag_name: ${{ github.ref_name }}
+          release_name: Release ${{ github.ref_name }}
           draft: false
           prerelease: false
           body: |
-            ## Self-Healing Infrastructure Release ${{ github.ref_name }}
+            ## Self-Healing Infra Release ${{ github.ref_name }}
             
-            ### 🐳 Docker Images
-            - **Latest**: `${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest`
-            - **Version**: `${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.ref_name }}`
-            - **Major**: `${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:v${{ github.ref_name }}`
+            ### 🐳 Images
+            - **latest**: `${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest`
+            - **version**: `${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.ref_name }}`
+            - **major**: `${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:v${{ github.ref_name }}`
             
             ### 📦 What's New
-            - Self-Healing Controller improvements
-            - Enhanced monitoring and alerting
-            - Chaos engineering integration
-            - Security enhancements
+            - Self-Healing improvements
+            - Enhanced monitoring
+            - Chaos-engineering integration
+            - Security fixes
             - Performance optimizations
             
             ### 🚀 Quick Start
             ```bash
-            # Pull the latest image
             docker pull ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
-            
-            # Deploy with Terraform
             ./scripts/deploy-terraform.sh
             ```
             
             ### 📋 Changelog
-            See the [commit history](https://github.com/${{ github.repository }}/compare/v${{ github.ref_name }}...main) for detailed changes.
+            [Commits](https://github.com/${{ github.repository }}/compare/v${{ github.ref_name }}...main)
 
       - name: Update Terraform variables
         run: |
-          # Update terraform.tfvars with new version
           if [ -f "terraform/terraform.tfvars" ]; then
-            sed -i.bak "s|self_healing_controller_image = \".*\"|self_healing_controller_image = \"${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.ref_name }}\"|" terraform/terraform.tfvars
-            echo "Updated terraform/terraform.tfvars with version ${{ github.ref_name }}"
+            sed -i.bak \
+              "s|self_healing_controller_image = \".*\"|self_healing_controller_image = \"${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.ref_name }}\"|" \
+              terraform/terraform.tfvars
+            echo "Updated terraform/terraform.tfvars to ${{ github.ref_name }}"
+          else
+            echo "terraform/terraform.tfvars not found, skipping update"
           fi
 
       - name: Commit Terraform updates
         run: |
-          git config --local user.email "action@github.com"
-          git config --local user.name "GitHub Action"
-          git add terraform/terraform.tfvars
-          git commit -m "Update Terraform with release ${{ github.ref_name }}" || echo "No changes to commit"
-          git push 
+          if [ -f "terraform/terraform.tfvars" ]; then
+            git config --local user.email "action@github.com"
+            git config --local user.name "GitHub Action"
+            git add terraform/terraform.tfvars
+            git commit -m "chore: bump TF vars for release ${{ github.ref_name }}" || echo "No changes to commit"
+            git push
+          else
+            echo "terraform/terraform.tfvars not found, skipping commit"
+          fi 
