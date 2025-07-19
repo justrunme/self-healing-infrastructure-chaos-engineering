@@ -238,7 +238,7 @@ jobs:
       - name: Deploy infrastructure with Terraform
         run: |
           cd terraform
-          terraform plan -out=tfplan
+          terraform plan -var="ci_cd_mode=false" -out=tfplan
           terraform apply tfplan
 
       - name: Verify Terraform deployment
@@ -380,7 +380,7 @@ jobs:
           # Deploy infrastructure with Terraform
           cd terraform
           terraform init
-          terraform plan -out=tfplan
+          terraform plan -var="ci_cd_mode=false" -out=tfplan
           terraform apply tfplan
           cd ..
 
@@ -522,7 +522,7 @@ jobs:
           # Deploy infrastructure with Terraform
           cd terraform
           terraform init
-          terraform plan -out=tfplan
+          terraform plan -var="ci_cd_mode=false" -out=tfplan
           terraform apply tfplan
           cd ..
 
