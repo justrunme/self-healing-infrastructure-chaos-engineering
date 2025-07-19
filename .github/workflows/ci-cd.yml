@@ -170,8 +170,8 @@ jobs:
           terraform output
 
           echo "Checking kubectl context..."
-          kubectl config current-context
-          kubectl cluster-info
+          minikube kubectl -- config current-context
+          minikube kubectl -- cluster-info
 
           echo "Checking all namespaces..."
           kubectl get namespaces | grep -E "(monitoring|chaos-engineering|self-healing|kured|test-app)"
@@ -185,9 +185,7 @@ jobs:
       - name: Wait for components to be ready
         run: |
           echo "Setting up kubectl context..."
-          kubectl config set-cluster local --server=https://kubernetes.default.svc
-          kubectl config set-context local --cluster=local
-          kubectl config use-context local
+          minikube kubectl -- get nodes
           
           echo "Waiting for Self-Healing Controller..."
           kubectl wait --for=condition=ready pod -l app=self-healing-controller -n self-healing --timeout=600s
