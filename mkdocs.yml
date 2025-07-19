@@ -1,0 +1,123 @@
+site_name: Self-Healing Infrastructure with Chaos Engineering
+site_description: A comprehensive Kubernetes-based self-healing infrastructure that automatically detects and recovers from failures
+site_author: justrunme
+site_url: https://justrunme.github.io/self-healing-infrastructure-chaos-engineering/
+
+# Repository
+repo_name: justrunme/self-healing-infrastructure-chaos-engineering
+repo_url: https://github.com/justrunme/self-healing-infrastructure-chaos-engineering
+
+# Theme
+theme:
+  name: material
+  palette:
+    - scheme: default
+      primary: indigo
+      accent: indigo
+      toggle:
+        icon: material/toggle-switch
+        name: Switch to dark mode
+    - scheme: slate
+      primary: indigo
+      accent: indigo
+      toggle:
+        icon: material/toggle-switch-off-outline
+        name: Switch to light mode
+  features:
+    - navigation.tabs
+    - navigation.sections
+    - navigation.expand
+    - navigation.top
+    - search.suggest
+    - search.highlight
+    - content.code.copy
+    - content.code.annotate
+  icon:
+    repo: fontawesome/brands/github
+    edit: material/pencil
+    view: material/eye
+
+# Navigation
+nav:
+  - Home: index.md
+  - Architecture:
+    - Overview: architecture/overview.md
+    - Infrastructure: architecture/infrastructure.md
+    - Components: architecture/components.md
+  - Self-Healing:
+    - Logic: self-healing/logic.md
+    - Controller: self-healing/controller.md
+    - Recovery: self-healing/recovery.md
+  - Chaos Engineering:
+    - Overview: chaos-engineering/overview.md
+    - Experiments: chaos-engineering/experiments.md
+    - Tools: chaos-engineering/tools.md
+  - CI/CD Pipeline:
+    - Overview: ci-cd/overview.md
+    - Workflows: ci-cd/workflows.md
+    - Automation: ci-cd/automation.md
+  - Monitoring:
+    - Prometheus: monitoring/prometheus.md
+    - Grafana: monitoring/grafana.md
+    - Alerts: monitoring/alerts.md
+  - Screenshots: screenshots.md
+  - Links: links.md
+
+# Plugins
+plugins:
+  - search
+  - git-revision-date-localized:
+      enable_creation_date: true
+  - minify:
+      minify_html: true
+
+# Extra
+extra:
+  social:
+    - icon: fontawesome/brands/github
+      link: https://github.com/justrunme
+    - icon: fontawesome/brands/linkedin
+      link: https://linkedin.com/in/justrunme
+  analytics:
+    provider: google
+    property: !ENV GOOGLE_ANALYTICS_KEY
+
+# Copyright
+copyright: Copyright &copy; 2024 justrunme
+
+# Markdown extensions
+markdown_extensions:
+  - admonition
+  - codehilite:
+      guess_lang: false
+  - footnotes
+  - meta
+  - toc:
+      permalink: true
+  - pymdownx.arithmatex:
+      generic: true
+  - pymdownx.betterem:
+      smart_enable: all
+  - pymdownx.caret
+  - pymdownx.details
+  - pymdownx.emoji:
+      emoji_generator: !!python/name:materialx.emoji.to_svg
+  - pymdownx.highlight:
+      anchor_linenums: true
+  - pymdownx.inlinehilite
+  - pymdownx.keys
+  - pymdownx.magiclink
+  - pymdownx.mark
+  - pymdownx.smartsymbols
+  - pymdownx.snippets:
+      check_paths: true
+  - pymdownx.superfences:
+      custom_fences:
+        - name: mermaid
+          class: mermaid
+          format: !!python/name:pymdownx.superfences.fence_code_format
+  - pymdownx.tabbed:
+      alternate_style: true
+  - pymdownx.tasklist:
+      custom_checkbox: true
+  - pymdownx.tilde

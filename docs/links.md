@@ -1,261 +1,249 @@
-# 🔗 Links
+# 🔗 Useful Links and Resources
 
-> **External resources, references, and useful links for the self-healing infrastructure**
+## Official Documentation
 
----
-
-## 📚 Documentation
-
-### **Official Documentation**
+### Kubernetes
 - **[Kubernetes Documentation](https://kubernetes.io/docs/)** - Official Kubernetes documentation
-- **[Terraform Documentation](https://www.terraform.io/docs)** - HashiCorp Terraform docs
-- **[Prometheus Documentation](https://prometheus.io/docs/)** - Prometheus monitoring system
-- **[Grafana Documentation](https://grafana.com/docs/)** - Grafana visualization platform
-- **[Chaos Mesh Documentation](https://chaos-mesh.org/docs/)** - Chaos engineering platform
+- **[Kubernetes API Reference](https://kubernetes.io/docs/reference/kubernetes-api/)** - Complete API reference
+- **[Kubernetes Best Practices](https://kubernetes.io/docs/concepts/configuration/overview/)** - Best practices guide
+- **[Kubernetes Security](https://kubernetes.io/docs/concepts/security/)** - Security concepts and practices
 
-### **GitHub Repositories**
-- **[Self-Healing Infrastructure](https://github.com/justrunme/self-healing-infrastructure-chaos-engineering)** - Main project repository
-- **[Kubernetes](https://github.com/kubernetes/kubernetes)** - Kubernetes source code
-- **[Terraform](https://github.com/hashicorp/terraform)** - Terraform source code
-- **[Prometheus](https://github.com/prometheus/prometheus)** - Prometheus source code
-- **[Chaos Mesh](https://github.com/chaos-mesh/chaos-mesh)** - Chaos Mesh source code
+### Prometheus
+- **[Prometheus Documentation](https://prometheus.io/docs/)** - Official Prometheus documentation
+- **[PromQL Query Language](https://prometheus.io/docs/prometheus/latest/querying/)** - Query language reference
+- **[Prometheus Best Practices](https://prometheus.io/docs/practices/)** - Best practices guide
+- **[Prometheus Alerting](https://prometheus.io/docs/alerting/latest/)** - Alerting rules and configuration
 
----
+### Grafana
+- **[Grafana Documentation](https://grafana.com/docs/)** - Official Grafana documentation
+- **[Grafana Dashboards](https://grafana.com/docs/grafana/latest/dashboards/)** - Dashboard creation guide
+- **[Grafana Plugins](https://grafana.com/docs/grafana/latest/plugins/)** - Plugin development and usage
+- **[Grafana Alerting](https://grafana.com/docs/grafana/latest/alerting/)** - Alerting configuration
 
-## 🐳 Container Registry
+### Terraform
+- **[Terraform Documentation](https://www.terraform.io/docs)** - Official Terraform documentation
+- **[Terraform Providers](https://registry.terraform.io/)** - Provider registry and documentation
+- **[Terraform Best Practices](https://www.terraform.io/docs/cloud/guides/recommended-practices/)** - Best practices guide
+- **[Terraform Modules](https://registry.terraform.io/browse/modules)** - Community modules
 
-### **Docker Images**
-- **[Self-Healing Controller](https://github.com/justrunme/self-healing-infrastructure-chaos-engineering/packages)** - GitHub Container Registry
-- **[Docker Hub](https://hub.docker.com/)** - Official Docker registry
-- **[Quay.io](https://quay.io/)** - Red Hat container registry
+## Chaos Engineering
 
-### **Image Tags**
-```bash
-# Latest version
-docker pull ghcr.io/justrunme/self-healing-infrastructure-chaos-engineering/self-healing-controller:latest
+### Chaos Mesh
+- **[Chaos Mesh Documentation](https://chaos-mesh.org/docs/)** - Official Chaos Mesh documentation
+- **[Chaos Mesh GitHub](https://github.com/chaos-mesh/chaos-mesh)** - Source code and issues
+- **[Chaos Mesh Examples](https://chaos-mesh.org/docs/user_guides/run_chaos_experiment/)** - Example experiments
+- **[Chaos Mesh Dashboard](https://chaos-mesh.org/docs/user_guides/dashboard/)** - Dashboard usage
 
-# Specific version
-docker pull ghcr.io/justrunme/self-healing-infrastructure-chaos-engineering/self-healing-controller:v1.0.0
+### Litmus Chaos
+- **[Litmus Documentation](https://docs.litmuschaos.io/)** - Official Litmus documentation
+- **[Litmus GitHub](https://github.com/litmuschaos/litmus)** - Source code and issues
+- **[Litmus Hub](https://hub.litmuschaos.io/)** - Experiment hub
+- **[Litmus Tutorials](https://docs.litmuschaos.io/docs/getstarted/)** - Getting started tutorials
 
-# Development version
-docker pull ghcr.io/justrunme/self-healing-infrastructure-chaos-engineering/self-healing-controller:dev
-```
-
----
-
-## 🚀 CI/CD Resources
-
-### **GitHub Actions**
-- **[GitHub Actions Documentation](https://docs.github.com/en/actions)** - Official GitHub Actions docs
-- **[GitHub Actions Marketplace](https://github.com/marketplace?type=actions)** - Community actions
-- **[Self-Healing CI/CD Workflow](https://github.com/justrunme/self-healing-infrastructure-chaos-engineering/actions)** - Project workflows
-
-### **CI/CD Tools**
-- **[Docker Buildx](https://docs.docker.com/buildx/working-with-buildx/)** - Multi-platform Docker builds
-- **[Terraform GitHub Actions](https://github.com/hashicorp/setup-terraform)** - Terraform setup action
-- **[Kubernetes GitHub Actions](https://github.com/azure/k8s-deploy)** - Kubernetes deployment action
-
----
-
-## 📊 Monitoring & Observability
-
-### **Prometheus Ecosystem**
-- **[Prometheus Query Language](https://prometheus.io/docs/prometheus/latest/querying/)** - PromQL reference
-- **[Prometheus Alerting](https://prometheus.io/docs/alerting/latest/)** - Alerting rules
-- **[Prometheus Exporters](https://prometheus.io/docs/instrumenting/exporters/)** - Available exporters
-
-### **Grafana Resources**
-- **[Grafana Dashboards](https://grafana.com/grafana/dashboards/)** - Community dashboards
-- **[Grafana Plugins](https://grafana.com/grafana/plugins/)** - Available plugins
-- **[Grafana Tutorials](https://grafana.com/tutorials/)** - Learning resources
-
-### **Alerting**
-- **[Alertmanager Configuration](https://prometheus.io/docs/alerting/latest/configuration/)** - Alert routing
-- **[Slack Integration](https://api.slack.com/messaging/webhooks)** - Slack webhook setup
-- **[PagerDuty Integration](https://developer.pagerduty.com/)** - Incident management
-
----
-
-## 🌪️ Chaos Engineering
-
-### **Chaos Mesh Resources**
-- **[Chaos Mesh Installation](https://chaos-mesh.org/docs/installation/installation-overview/)** - Installation guide
-- **[Chaos Mesh Experiments](https://chaos-mesh.org/docs/experiments/overview/)** - Experiment types
-- **[Chaos Mesh Dashboard](https://chaos-mesh.org/docs/ui/overview/)** - Web UI guide
-
-### **Chaos Engineering Principles**
-- **[Netflix Chaos Engineering](https://netflixtechblog.com/tagged/chaos-engineering)** - Netflix chaos engineering blog
+### Chaos Engineering Resources
+- **[Principles of Chaos Engineering](https://principlesofchaos.org/)** - Core principles
 - **[Chaos Engineering Book](https://www.oreilly.com/library/view/chaos-engineering/9781491988459/)** - O'Reilly book
-- **[Chaos Engineering Community](https://chaos-engineering.com/)** - Community resources
+- **[Chaos Engineering Conference](https://www.gremlin.com/community/chaos-engineering-conference)** - Conference resources
+- **[Chaos Engineering Slack](https://slack.chaosengineering.io/)** - Community Slack
 
----
+## Self-Healing and Resilience
 
-## 🔧 Development Tools
+### Self-Healing Resources
+- **[Kubernetes Self-Healing](https://kubernetes.io/docs/concepts/workloads/pods/pod-lifecycle/)** - Pod lifecycle and restart policies
+- **[Kubernetes Health Checks](https://kubernetes.io/docs/tasks/configure-pod-container/configure-liveness-readiness-startup-probes/)** - Health check configuration
+- **[Kubernetes Operators](https://kubernetes.io/docs/concepts/extend-kubernetes/operator/)** - Operator pattern
+- **[Kubernetes Controllers](https://kubernetes.io/docs/concepts/architecture/controller/)** - Controller concepts
 
-### **Kubernetes Tools**
-- **[kubectl](https://kubernetes.io/docs/reference/kubectl/)** - Kubernetes command-line tool
-- **[k9s](https://k9scli.io/)** - Terminal-based Kubernetes UI
-- **[Lens](https://k8slens.dev/)** - Kubernetes IDE
-- **[Minikube](https://minikube.sigs.k8s.io/)** - Local Kubernetes cluster
+### Resilience Engineering
+- **[Resilience Engineering Principles](https://resilience-engineering.org/)** - Core principles
+- **[SRE Book](https://sre.google/sre-book/)** - Google SRE book
+- **[Site Reliability Engineering](https://sre.google/)** - Google SRE resources
+- **[Resilience Patterns](https://www.oreilly.com/library/view/resilience-patterns/9781492041970/)** - Resilience patterns book
 
-### **Development Environment**
-- **[VS Code](https://code.visualstudio.com/)** - Code editor
-- **[Docker Desktop](https://www.docker.com/products/docker-desktop)** - Docker development
-- **[Helm](https://helm.sh/)** - Kubernetes package manager
-- **[Skaffold](https://skaffold.dev/)** - Kubernetes development workflow
+## Monitoring and Observability
 
----
+### Monitoring Tools
+- **[Prometheus Best Practices](https://prometheus.io/docs/practices/)** - Monitoring best practices
+- **[Grafana Dashboards](https://grafana.com/grafana/dashboards/)** - Community dashboards
+- **[AlertManager Configuration](https://prometheus.io/docs/alerting/latest/configuration/)** - Alert configuration
+- **[Service Mesh Monitoring](https://istio.io/latest/docs/ops/integrations/prometheus/)** - Istio monitoring
 
-## 📖 Learning Resources
+### Observability
+- **[Observability Engineering](https://www.oreilly.com/library/view/observability-engineering/9781492076438/)** - Observability book
+- **[Distributed Tracing](https://opentracing.io/)** - OpenTracing specification
+- **[Jaeger Tracing](https://www.jaegertracing.io/)** - Distributed tracing system
+- **[OpenTelemetry](https://opentelemetry.io/)** - Observability framework
 
-### **Kubernetes Learning**
-- **[Kubernetes Tutorial](https://kubernetes.io/docs/tutorials/)** - Official tutorials
-- **[Kubernetes Academy](https://kubernetes.academy/)** - Free courses
-- **[Kubernetes by Example](https://kubernetesbyexample.com/)** - Practical examples
-- **[Kubernetes Patterns](https://k8spatterns.io/)** - Design patterns
+## CI/CD and DevOps
 
-### **DevOps & SRE**
-- **[Google SRE Book](https://sre.google/)** - Site Reliability Engineering
-- **[DevOps Roadmap](https://roadmap.sh/devops)** - DevOps learning path
-- **[SRE Weekly](https://sreweekly.com/)** - SRE newsletter
-- **[DevOps Weekly](https://www.devopsweekly.com/)** - DevOps newsletter
+### GitHub Actions
+- **[GitHub Actions Documentation](https://docs.github.com/en/actions)** - Official documentation
+- **[GitHub Actions Examples](https://github.com/actions/starter-workflows)** - Starter workflows
+- **[GitHub Actions Marketplace](https://github.com/marketplace?type=actions)** - Community actions
+- **[GitHub Actions Best Practices](https://docs.github.com/en/actions/learn-github-actions/security-hardening-for-github-actions)** - Security best practices
 
----
+### DevOps Resources
+- **[DevOps Handbook](https://www.oreilly.com/library/view/the-devops-handbook/9781457191381/)** - DevOps practices
+- **[Site Reliability Engineering](https://sre.google/sre-book/)** - SRE practices
+- **[Infrastructure as Code](https://www.oreilly.com/library/view/infrastructure-as-code/9781491924334/)** - IaC book
+- **[Continuous Delivery](https://continuousdelivery.com/)** - Continuous delivery practices
 
-## 🛠️ Infrastructure Tools
+## Security
 
-### **Infrastructure as Code**
-- **[Terraform Best Practices](https://www.terraform.io/docs/cloud/guides/recommended-practices/index.html)** - Terraform guidelines
-- **[Terraform Modules](https://registry.terraform.io/)** - Community modules
-- **[Terraform Examples](https://github.com/hashicorp/terraform-examples)** - Example configurations
-
-### **Container Orchestration**
-- **[Kubernetes Best Practices](https://kubernetes.io/docs/concepts/configuration/overview/)** - K8s guidelines
-- **[Kubernetes Security](https://kubernetes.io/docs/concepts/security/)** - Security best practices
-- **[Kubernetes Networking](https://kubernetes.io/docs/concepts/services-networking/)** - Network concepts
-
----
-
-## 🔐 Security Resources
-
-### **Kubernetes Security**
-- **[Kubernetes Security Best Practices](https://kubernetes.io/docs/concepts/security/)** - Security guidelines
+### Kubernetes Security
+- **[Kubernetes Security Best Practices](https://kubernetes.io/docs/concepts/security/)** - Security guide
 - **[Pod Security Standards](https://kubernetes.io/docs/concepts/security/pod-security-standards/)** - Pod security
 - **[Network Policies](https://kubernetes.io/docs/concepts/services-networking/network-policies/)** - Network security
+- **[RBAC](https://kubernetes.io/docs/reference/access-authn-authz/rbac/)** - Role-based access control
 
-### **Container Security**
-- **[Docker Security](https://docs.docker.com/engine/security/)** - Docker security guide
-- **[Container Security Scanning](https://docs.anchore.com/)** - Security scanning
-- **[Trivy](https://aquasecurity.github.io/trivy/)** - Vulnerability scanner
+### Security Tools
+- **[Trivy](https://trivy.dev/)** - Vulnerability scanner
+- **[Falco](https://falco.org/)** - Runtime security monitoring
+- **[OPA](https://www.openpolicyagent.org/)** - Policy engine
+- **[Kyverno](https://kyverno.io/)** - Kubernetes policy engine
 
----
+## Learning Resources
 
-## 📈 Performance & Scaling
+### Online Courses
+- **[Kubernetes Fundamentals](https://www.coursera.org/specializations/kubernetes)** - Coursera course
+- **[Prometheus Monitoring](https://www.udemy.com/course/prometheus-monitoring/)** - Udemy course
+- **[Chaos Engineering](https://www.oreilly.com/live-training/courses/chaos-engineering/0636920051612/)** - O'Reilly course
+- **[DevOps Bootcamp](https://www.udemy.com/course/learn-devops-infrastructure-automation-with-terraform/)** - DevOps course
 
-### **Performance Tuning**
-- **[Kubernetes Performance](https://kubernetes.io/docs/concepts/cluster-administration/cluster-management/)** - Performance guide
-- **[Horizontal Pod Autoscaler](https://kubernetes.io/docs/tasks/run-application/horizontal-pod-autoscale/)** - HPA documentation
-- **[Vertical Pod Autoscaler](https://github.com/kubernetes/autoscaler/tree/master/vertical-pod-autoscaler)** - VPA documentation
+### Books
+- **[Kubernetes in Action](https://www.manning.com/books/kubernetes-in-action)** - Kubernetes book
+- **[Prometheus: Up & Running](https://www.oreilly.com/library/view/prometheus-up/9781492034131/)** - Prometheus book
+- **[Chaos Engineering](https://www.oreilly.com/library/view/chaos-engineering/9781491988459/)** - Chaos engineering book
+- **[Site Reliability Engineering](https://sre.google/sre-book/)** - SRE book
 
-### **Load Testing**
-- **[k6](https://k6.io/)** - Modern load testing tool
-- **[Apache Bench](https://httpd.apache.org/docs/2.4/programs/ab.html)** - Simple load testing
-- **[Artillery](https://www.artillery.io/)** - Load testing platform
-
----
-
-## 🆘 Support & Community
-
-### **Community Forums**
-- **[Kubernetes Slack](https://slack.k8s.io/)** - Kubernetes community
-- **[Terraform Community](https://discuss.hashicorp.com/c/terraform-core/27)** - Terraform discussions
-- **[Prometheus Community](https://prometheus.io/community/)** - Prometheus community
-- **[Grafana Community](https://community.grafana.com/)** - Grafana community
-
-### **Stack Overflow**
-- **[Kubernetes Tag](https://stackoverflow.com/questions/tagged/kubernetes)** - Kubernetes questions
-- **[Terraform Tag](https://stackoverflow.com/questions/tagged/terraform)** - Terraform questions
-- **[Prometheus Tag](https://stackoverflow.com/questions/tagged/prometheus)** - Prometheus questions
-
----
-
-## 📰 Blogs & Articles
-
-### **Technical Blogs**
+### Blogs and Articles
 - **[Kubernetes Blog](https://kubernetes.io/blog/)** - Official Kubernetes blog
-- **[HashiCorp Blog](https://www.hashicorp.com/blog)** - HashiCorp blog
 - **[Prometheus Blog](https://prometheus.io/blog/)** - Prometheus blog
-- **[Grafana Blog](https://grafana.com/blog/)** - Grafana blog
+- **[Chaos Engineering Blog](https://www.gremlin.com/blog/)** - Chaos engineering blog
+- **[DevOps.com](https://devops.com/)** - DevOps news and articles
 
-### **Industry Blogs**
-- **[Netflix Tech Blog](https://netflixtechblog.com/)** - Netflix engineering
-- **[Google Cloud Blog](https://cloud.google.com/blog/products/containers-kubernetes)** - Google Cloud K8s
-- **[AWS Container Blog](https://aws.amazon.com/blogs/containers/)** - AWS containers
-- **[Azure Kubernetes Blog](https://techcommunity.microsoft.com/t5/azure-kubernetes-service/bg-p/AzureKubernetesService)** - Azure AKS
+## Community and Support
+
+### Forums and Q&A
+- **[Stack Overflow](https://stackoverflow.com/questions/tagged/kubernetes)** - Kubernetes questions
+- **[Reddit r/kubernetes](https://www.reddit.com/r/kubernetes/)** - Kubernetes community
+- **[Reddit r/devops](https://www.reddit.com/r/devops/)** - DevOps community
+- **[Discord Kubernetes](https://discord.gg/kubernetes)** - Kubernetes Discord
+
+### Slack Channels
+- **[Kubernetes Slack](https://slack.k8s.io/)** - Official Kubernetes Slack
+- **[Prometheus Slack](https://prometheus.io/community/)** - Prometheus community
+- **[Grafana Slack](https://grafana.com/slack/)** - Grafana community
+- **[Chaos Engineering Slack](https://slack.chaosengineering.io/)** - Chaos engineering community
+
+### Conferences
+- **[KubeCon](https://events.linuxfoundation.org/kubecon-cloudnativecon-north-america/)** - Kubernetes conference
+- **[PromCon](https://promcon.io/)** - Prometheus conference
+- **[Chaos Engineering Conference](https://www.gremlin.com/community/chaos-engineering-conference)** - Chaos engineering conference
+- **[DevOps Days](https://devopsdays.org/)** - DevOps conference
+
+## Tools and Utilities
+
+### Development Tools
+- **[kubectl](https://kubernetes.io/docs/reference/kubectl/)** - Kubernetes command line tool
+- **[helm](https://helm.sh/)** - Kubernetes package manager
+- **[k9s](https://k9scli.io/)** - Kubernetes CLI tool
+- **[lens](https://k8slens.dev/)** - Kubernetes IDE
+
+### Monitoring Tools
+- **[Prometheus](https://prometheus.io/)** - Monitoring system
+- **[Grafana](https://grafana.com/)** - Visualization platform
+- **[AlertManager](https://prometheus.io/docs/alerting/latest/alertmanager/)** - Alert management
+- **[Jaeger](https://www.jaegertracing.io/)** - Distributed tracing
+
+### Infrastructure Tools
+- **[Terraform](https://www.terraform.io/)** - Infrastructure as code
+- **[Ansible](https://www.ansible.com/)** - Configuration management
+- **[Packer](https://www.packer.io/)** - Machine image creation
+- **[Vagrant](https://www.vagrantup.com/)** - Development environment
+
+### Security Tools
+- **[Trivy](https://trivy.dev/)** - Vulnerability scanner
+- **[Falco](https://falco.org/)** - Runtime security
+- **[OPA](https://www.openpolicyagent.org/)** - Policy engine
+- **[Kyverno](https://kyverno.io/)** - Kubernetes policies
+
+## GitHub Repositories
+
+### Official Repositories
+- **[Kubernetes](https://github.com/kubernetes/kubernetes)** - Kubernetes source code
+- **[Prometheus](https://github.com/prometheus/prometheus)** - Prometheus source code
+- **[Grafana](https://github.com/grafana/grafana)** - Grafana source code
+- **[Terraform](https://github.com/hashicorp/terraform)** - Terraform source code
+
+### Community Repositories
+- **[Chaos Mesh](https://github.com/chaos-mesh/chaos-mesh)** - Chaos engineering platform
+- **[Litmus Chaos](https://github.com/litmuschaos/litmus)** - Chaos engineering platform
+- **[Falco](https://github.com/falcosecurity/falco)** - Runtime security monitoring
+- **[OPA](https://github.com/open-policy-agent/opa)** - Policy engine
+
+### Example Projects
+- **[Kubernetes Examples](https://github.com/kubernetes/examples)** - Kubernetes examples
+- **[Prometheus Examples](https://github.com/prometheus/prometheus/tree/main/examples)** - Prometheus examples
+- **[Terraform Examples](https://github.com/hashicorp/terraform-examples)** - Terraform examples
+- **[Helm Charts](https://github.com/helm/charts)** - Helm charts
+
+## Documentation Standards
+
+### Documentation Tools
+- **[MkDocs](https://www.mkdocs.org/)** - Documentation generator
+- **[Docusaurus](https://docusaurus.io/)** - Documentation website
+- **[GitBook](https://www.gitbook.com/)** - Documentation platform
+- **[Read the Docs](https://readthedocs.org/)** - Documentation hosting
+
+### Documentation Best Practices
+- **[Write the Docs](https://www.writethedocs.org/)** - Documentation community
+- **[Documentation Guide](https://www.writethedocs.org/guide/)** - Writing guide
+- **[Technical Writing](https://developers.google.com/tech-writing)** - Google technical writing
+- **[Documentation Standards](https://www.writethedocs.org/guide/writing/docs-principles/)** - Documentation principles
+
+## Contributing
+
+### How to Contribute
+- **[Contributing Guidelines](CONTRIBUTING.md)** - Project contribution guide
+- **[Code of Conduct](CODE_OF_CONDUCT.md)** - Community guidelines
+- **[Issue Templates](.github/ISSUE_TEMPLATE/)** - Issue reporting templates
+- **[Pull Request Templates](.github/PULL_REQUEST_TEMPLATE.md)** - PR templates
+
+### Development Setup
+- **[Development Guide](DEVELOPMENT.md)** - Development setup guide
+- **[Testing Guide](TESTING.md)** - Testing procedures
+- **[Release Process](RELEASE.md)** - Release procedures
+- **[Maintenance Guide](MAINTENANCE.md)** - Maintenance procedures
+
+## Support and Contact
+
+### Getting Help
+- **[GitHub Issues](https://github.com/justrunme/self-healing-infrastructure-chaos-engineering/issues)** - Report issues
+- **[GitHub Discussions](https://github.com/justrunme/self-healing-infrastructure-chaos-engineering/discussions)** - Ask questions
+- **[Email Support](mailto:support@self-healing-infrastructure.com)** - Email support
+- **[Slack Channel](https://slack.self-healing-infrastructure.com)** - Community Slack
+
+### Contact Information
+- **Project Maintainer**: [justrunme](https://github.com/justrunme)
+- **Email**: [justrunme@example.com](mailto:justrunme@example.com)
+- **LinkedIn**: [justrunme](https://linkedin.com/in/justrunme)
+- **Twitter**: [@justrunme](https://twitter.com/justrunme)
+
+## License and Legal
+
+### License Information
+- **[MIT License](LICENSE)** - Project license
+- **[Contributor License Agreement](CLA.md)** - Contributor agreement
+- **[Privacy Policy](PRIVACY.md)** - Privacy policy
+- **[Terms of Service](TERMS.md)** - Terms of service
+
+### Legal Resources
+- **[Open Source Licenses](https://opensource.org/licenses)** - License information
+- **[Creative Commons](https://creativecommons.org/)** - Creative commons licenses
+- **[Software Freedom Law Center](https://www.softwarefreedom.org/)** - Legal resources
+- **[Open Source Initiative](https://opensource.org/)** - Open source advocacy
 
 ---
 
-## 🎓 Certifications
-
-### **Kubernetes Certifications**
-- **[Certified Kubernetes Administrator (CKA)](https://www.cncf.io/certification/cka/)** - K8s administration
-- **[Certified Kubernetes Application Developer (CKAD)](https://www.cncf.io/certification/ckad/)** - K8s development
-- **[Certified Kubernetes Security Specialist (CKS)](https://www.cncf.io/certification/cks/)** - K8s security
-
-### **Cloud Certifications**
-- **[AWS Certified Kubernetes](https://aws.amazon.com/certification/certified-kubernetes-administrator/)** - AWS K8s
-- **[Azure Kubernetes Service](https://docs.microsoft.com/en-us/learn/certifications/exams/az-400)** - Azure K8s
-- **[Google Cloud Kubernetes](https://cloud.google.com/certification/kubernetes-engine)** - GCP K8s
-
----
-
-## 📊 Metrics & Monitoring
-
-### **Prometheus Queries**
-```promql
-# Useful PromQL queries for self-healing infrastructure
-
-# Pod availability
-kube_pod_status_phase{phase="Running"} / kube_pod_status_phase
-
-# Recovery success rate
-rate(self_healing_recovery_actions_total{success="true"}[5m]) / 
-rate(self_healing_recovery_actions_total[5m])
-
-# Average recovery time
-histogram_quantile(0.95, rate(self_healing_recovery_duration_seconds_bucket[5m]))
-
-# Node health
-kube_node_status_condition{condition="Ready",status="true"}
-
-# Resource usage
-container_cpu_usage_seconds_total
-container_memory_usage_bytes
-```
-
-### **Grafana Dashboards**
-- **[Kubernetes Cluster Monitoring](https://grafana.com/grafana/dashboards/315)** - Cluster overview
-- **[Kubernetes Pod Monitoring](https://grafana.com/grafana/dashboards/6417)** - Pod metrics
-- **[Prometheus Stats](https://grafana.com/grafana/dashboards/3662)** - Prometheus metrics
-
----
-
-## 🔧 Troubleshooting
-
-### **Common Issues**
-- **[Kubernetes Troubleshooting](https://kubernetes.io/docs/tasks/debug/)** - Debug guide
-- **[Terraform Troubleshooting](https://www.terraform.io/docs/cli/commands/plan.html#troubleshooting)** - Terraform issues
-- **[Prometheus Troubleshooting](https://prometheus.io/docs/prometheus/latest/troubleshooting/)** - Prometheus issues
-
-### **Debug Tools**
-- **[kubectl debug](https://kubernetes.io/docs/tasks/debug-application-cluster/debug-application/)** - Debug containers
-- **[kubectl logs](https://kubernetes.io/docs/reference/kubectl/cheatsheet/#interacting-with-running-pods)** - View logs
-- **[kubectl describe](https://kubernetes.io/docs/reference/kubectl/cheatsheet/#interacting-with-running-pods)** - Resource details
-
----
-
-<div align="center">
-
-**[← Screenshots](./screenshots.md)** | **[Back to Index](./index.md)**
-
-</div> 
+*This page contains links to external resources. The project maintainers are not responsible for the content of external websites.*
