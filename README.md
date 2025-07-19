@@ -38,7 +38,7 @@ A comprehensive **Kubernetes-based self-healing infrastructure** that automatica
 
 ## 🧪 Comprehensive Test Suite
 
-Our CI/CD pipeline includes **8 comprehensive test stages** that validate every aspect of the infrastructure:
+My CI/CD pipeline includes **8 comprehensive test stages** that validate every aspect of the infrastructure:
 
 ### 1. **Code Quality & Linting** ✅
 - YAML validation and linting
@@ -84,7 +84,7 @@ Our CI/CD pipeline includes **8 comprehensive test stages** that validate every 
 
 ## 📊 Test Results & System Report
 
-After each successful CI/CD run, we generate a comprehensive system report that includes:
+After each successful CI/CD run, I generate a comprehensive system report that includes:
 
 ```bash
 # System Status Report
