@@ -606,6 +606,12 @@ resource "kubernetes_deployment" "test_app" {
       }
 
       spec {
+        # Создаём пустой каталог, в который nginx сможет писать
+        volume {
+          name = "nginx-cache"
+          empty_dir {}
+        }
+
         container {
           image = "nginx:1.21-alpine"
           name  = "test-app"
@@ -613,6 +619,12 @@ resource "kubernetes_deployment" "test_app" {
           port {
             container_port = 80
             name          = "http"
+          }
+
+          # Монтируем volume внутрь контейнера для nginx кеша
+          volume_mount {
+            name       = "nginx-cache"
+            mount_path = "/var/cache/nginx"
           }
 
           resources {

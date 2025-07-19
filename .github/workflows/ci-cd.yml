@@ -202,7 +202,13 @@ jobs:
           echo "=== Events in test-app namespace ==="
           kubectl get events -n test-app --sort-by='.lastTimestamp' | tail -20
 
-      # 3.8 Basic smoke test
+      # 3.8 Wait for metrics-server
+      - name: Wait for metrics-server
+        run: |
+          echo "🚀 Waiting for metrics-server to be ready..."
+          kubectl wait --for=condition=available deployment/metrics-server -n kube-system --timeout=60s || echo "Metrics-server not ready yet"
+
+      # 3.9 Basic smoke test
       - name: Smoke Test
         run: |
           kubectl get ns self-healing monitoring chaos-engineering
