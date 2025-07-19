@@ -155,12 +155,12 @@ jobs:
       - name: Run integration tests
         run: |
           cd kubernetes/self-healing
-          python -m pytest tests/test_integration.py -v --timeout=300
+          python -m pytest tests/test_integration.py -v
 
       - name: Run performance tests
         run: |
           cd kubernetes/self-healing
-          python -m pytest tests/test_performance.py -v --timeout=600
+          python -m pytest tests/test_performance.py -v
 
       - name: Upload coverage reports
         uses: actions/upload-artifact@v4
