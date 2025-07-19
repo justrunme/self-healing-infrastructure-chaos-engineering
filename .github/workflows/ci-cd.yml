@@ -61,16 +61,17 @@ jobs:
           black --check kubernetes/self-healing/
           flake8 kubernetes/self-healing/
           cd kubernetes/self-healing && python -m pytest tests/ -v
+      - name: Configure Terraform plugin cache
+        if: matrix.tool == 'terraform'
+        run: |
+          mkdir -p ~/.terraform.d/plugin-cache
+          echo "TF_PLUGIN_CACHE_DIR=$HOME/.terraform.d/plugin-cache" >> $GITHUB_ENV
+
       - name: Terraform Validate
         if: matrix.tool == 'terraform'
         run: |
           cd terraform
-          # Create plugin cache directory if it doesn't exist
-          mkdir -p "$HOME/.terraform.d/plugin-cache"
-          # First init without plugin-dir to download providers
           terraform init
-          # Then init with plugin-dir to use cache
-          terraform init -plugin-dir="$HOME/.terraform.d/plugin-cache"
           terraform validate
 
   # 2. Build & Push Docker
@@ -128,24 +129,22 @@ jobs:
           echo "Current KUBE_CONFIG_PATH: $KUBE_CONFIG_PATH"
 
       # 3.2 Cache Terraform plugins
-      - name: Setup Terraform cache
-        run: |
-          mkdir -p ~/.terraform.d/plugin-cache
       - uses: actions/cache@v3
         with:
           path: ~/.terraform.d/plugin-cache
           key: ${{ runner.os }}-tf-plugins-${{ hashFiles('terraform/**/*.tf') }}
 
-      # 3.3 Deploy infrastructure
+      # 3.3 Configure Terraform plugin cache
+      - name: Configure Terraform plugin cache
+        run: |
+          mkdir -p ~/.terraform.d/plugin-cache
+          echo "TF_PLUGIN_CACHE_DIR=$HOME/.terraform.d/plugin-cache" >> $GITHUB_ENV
+
+      # 3.4 Deploy infrastructure
       - name: Terraform Init & Apply
         run: |
           cd terraform
-          # Create plugin cache directory if it doesn't exist
-          mkdir -p "$HOME/.terraform.d/plugin-cache"
-          # First init without plugin-dir to download providers
           terraform init
-          # Then init with plugin-dir to use cache
-          terraform init -plugin-dir="$HOME/.terraform.d/plugin-cache"
           terraform plan -var="ci_cd_mode=false" -out=tfplan
           terraform apply -auto-approve tfplan
 
