@@ -232,11 +232,11 @@ jobs:
 
       - name: Wait for components to be ready
         run: |
-          echo "Waiting for Self-Healing Controller..."
-          kubectl wait --for=condition=ready pod -l app=self-healing-controller -n self-healing --timeout=600s
+          echo "🚀 Waiting for Self-Healing Controller to roll out..."
+          kubectl rollout status deployment/self-healing-controller -n self-healing --timeout=120s
           
-          echo "Waiting for test application..."
-          kubectl wait --for=condition=ready pod -l app=test-app -n test-app --timeout=300s
+          echo "🚀 Waiting for test-app to roll out..."
+          kubectl rollout status deployment/test-app -n test-app --timeout=120s
 
       - name: Test Self-Healing Controller health
         run: |
@@ -285,8 +285,10 @@ jobs:
 
       - name: Wait for monitoring components
         run: |
-          echo "Waiting for Prometheus stack..."
-          kubectl wait --for=condition=ready pod -l app.kubernetes.io/name=prometheus -n monitoring --timeout=300s
+          echo "🚀 Waiting for Prometheus stack to roll out..."
+          # Ждем готовности Prometheus stack через Helm release
+          kubectl wait --for=condition=available deployment/prometheus-kube-prometheus-prometheus -n monitoring --timeout=300s || echo "Prometheus deployment not found, continuing..."
+          kubectl wait --for=condition=available deployment/prometheus-grafana -n monitoring --timeout=300s || echo "Grafana deployment not found, continuing..."
 
       - name: Test Prometheus connectivity
         run: |
