@@ -3,4 +3,4 @@ kind: Namespace
 metadata:
   name: chaos-engineering
   labels:
-    name: chaos-engineering 
+    name: chaos-engineering
