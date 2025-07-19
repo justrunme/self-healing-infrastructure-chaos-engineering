@@ -91,10 +91,50 @@ resource "kubernetes_secret" "slack_secret" {
   metadata {
     name      = "slack-secret"
     namespace = kubernetes_namespace.monitoring.metadata[0].name
+    labels = {
+      app = "slack-notifications"
+    }
   }
 
   data = {
     "webhook_url" = base64encode(var.slack_webhook_url)
+    "channel"     = base64encode(var.slack_channel)
+  }
+
+  type = "Opaque"
+}
+
+# Создание Secret для Self-Healing Controller
+resource "kubernetes_secret" "self_healing_secret" {
+  metadata {
+    name      = "self-healing-secret"
+    namespace = kubernetes_namespace.self_healing.metadata[0].name
+    labels = {
+      app = "self-healing-controller"
+    }
+  }
+
+  data = {
+    "slack_webhook_url" = base64encode(var.slack_webhook_url)
+    "slack_channel"     = base64encode(var.slack_channel)
+    "grafana_admin_password" = base64encode(var.grafana_admin_password)
+  }
+
+  type = "Opaque"
+}
+
+# Создание Secret для Prometheus
+resource "kubernetes_secret" "prometheus_secret" {
+  metadata {
+    name      = "prometheus-secret"
+    namespace = kubernetes_namespace.monitoring.metadata[0].name
+    labels = {
+      app = "prometheus"
+    }
+  }
+
+  data = {
+    "admin_password" = base64encode(var.grafana_admin_password)
   }
 
   type = "Opaque"
@@ -218,6 +258,15 @@ resource "kubernetes_manifest" "chaos_experiments" {
   
   depends_on = [
     kubernetes_manifest.chaos_mesh
+  ]
+}
+
+# Развертывание Backup системы
+resource "kubernetes_manifest" "backup_system" {
+  manifest = yamldecode(file("${path.module}/../kubernetes/backup/backup-cronjob.yaml"))
+  
+  depends_on = [
+    kubernetes_namespace.monitoring
   ]
 }
 
@@ -362,6 +411,9 @@ resource "kubernetes_deployment" "self_healing_controller" {
             }
             initial_delay_seconds = 30
             period_seconds        = 10
+            timeout_seconds       = 5
+            failure_threshold     = 3
+            success_threshold     = 1
           }
 
           readiness_probe {
@@ -371,7 +423,39 @@ resource "kubernetes_deployment" "self_healing_controller" {
             }
             initial_delay_seconds = 5
             period_seconds        = 5
+            timeout_seconds       = 3
+            failure_threshold     = 3
+            success_threshold     = 1
           }
+
+          startup_probe {
+            http_get {
+              path = "/health"
+              port = 8080
+            }
+            initial_delay_seconds = 10
+            period_seconds        = 5
+            timeout_seconds       = 3
+            failure_threshold     = 30
+            success_threshold     = 1
+          }
+
+          security_context {
+            allow_privilege_escalation = false
+            read_only_root_filesystem  = true
+            run_as_non_root            = true
+            run_as_user                = 1000
+            capabilities {
+              drop = ["ALL"]
+            }
+          }
+        }
+
+        security_context {
+          fs_group        = 1000
+          run_as_group    = 1000
+          run_as_non_root = true
+          run_as_user     = 1000
         }
       }
     }
@@ -442,11 +526,12 @@ resource "kubernetes_deployment" "test_app" {
 
       spec {
         container {
-          image = "nginx:latest"
+          image = "nginx:1.21-alpine"
           name  = "test-app"
 
           port {
             container_port = 80
+            name          = "http"
           }
 
           resources {
@@ -467,6 +552,9 @@ resource "kubernetes_deployment" "test_app" {
             }
             initial_delay_seconds = 30
             period_seconds        = 10
+            timeout_seconds       = 5
+            failure_threshold     = 3
+            success_threshold     = 1
           }
 
           readiness_probe {
@@ -476,7 +564,27 @@ resource "kubernetes_deployment" "test_app" {
             }
             initial_delay_seconds = 5
             period_seconds        = 5
+            timeout_seconds       = 3
+            failure_threshold     = 3
+            success_threshold     = 1
           }
+
+          security_context {
+            allow_privilege_escalation = false
+            read_only_root_filesystem  = false
+            run_as_non_root            = true
+            run_as_user                = 101
+            capabilities {
+              drop = ["ALL"]
+            }
+          }
+        }
+
+        security_context {
+          fs_group        = 101
+          run_as_group    = 101
+          run_as_non_root = true
+          run_as_user     = 101
         }
       }
     }
@@ -545,5 +653,265 @@ resource "kubernetes_horizontal_pod_autoscaler" "test_app" {
 
   depends_on = [
     kubernetes_deployment.test_app
+  ]
+} 
+
+# Network Policy для Self-Healing Controller
+resource "kubernetes_network_policy" "self_healing_controller" {
+  metadata {
+    name      = "self-healing-controller-network-policy"
+    namespace = kubernetes_namespace.self_healing.metadata[0].name
+  }
+
+  spec {
+    pod_selector {
+      match_labels = {
+        app = "self-healing-controller"
+      }
+    }
+
+    policy_types = ["Ingress", "Egress"]
+
+    ingress {
+      from {
+        namespace_selector {
+          match_labels = {
+            name = "monitoring"
+          }
+        }
+      }
+      ports {
+        port     = 8080
+        protocol = "TCP"
+      }
+    }
+
+    ingress {
+      from {
+        namespace_selector {
+          match_labels = {
+            name = "kube-system"
+          }
+        }
+      }
+      ports {
+        port     = 8080
+        protocol = "TCP"
+      }
+    }
+
+    egress {
+      to {
+        namespace_selector {
+          match_labels = {
+            name = "monitoring"
+          }
+        }
+      }
+      ports {
+        port     = 9090
+        protocol = "TCP"
+      }
+    }
+
+    egress {
+      to {
+        namespace_selector {
+          match_labels = {
+            name = "chaos-engineering"
+          }
+        }
+      }
+      ports {
+        port     = 10080
+        protocol = "TCP"
+      }
+    }
+
+    egress {
+      to {
+        namespace_selector {
+          match_labels = {
+            name = "test-app"
+          }
+        }
+      }
+    }
+
+    egress {
+      to {
+        namespace_selector {
+          match_labels = {
+            name = "kube-system"
+          }
+        }
+      }
+    }
+  }
+
+  depends_on = [
+    kubernetes_namespace.self_healing
+  ]
+}
+
+# Network Policy для Test Application
+resource "kubernetes_network_policy" "test_app" {
+  metadata {
+    name      = "test-app-network-policy"
+    namespace = kubernetes_namespace.test_app.metadata[0].name
+  }
+
+  spec {
+    pod_selector {
+      match_labels = {
+        app = "test-app"
+      }
+    }
+
+    policy_types = ["Ingress", "Egress"]
+
+    ingress {
+      from {
+        namespace_selector {
+          match_labels = {
+            name = "self-healing"
+          }
+        }
+      }
+      ports {
+        port     = 80
+        protocol = "TCP"
+      }
+    }
+
+    ingress {
+      from {
+        namespace_selector {
+          match_labels = {
+            name = "monitoring"
+          }
+        }
+      }
+      ports {
+        port     = 80
+        protocol = "TCP"
+      }
+    }
+
+    egress {
+      to {
+        namespace_selector {
+          match_labels = {
+            name = "monitoring"
+          }
+        }
+      }
+      ports {
+        port     = 9090
+        protocol = "TCP"
+      }
+    }
+
+    egress {
+      to {
+        namespace_selector {
+          match_labels = {
+            name = "kube-system"
+          }
+        }
+      }
+    }
+  }
+
+  depends_on = [
+    kubernetes_namespace.test_app
+  ]
+}
+
+# Network Policy для Monitoring
+resource "kubernetes_network_policy" "monitoring" {
+  metadata {
+    name      = "monitoring-network-policy"
+    namespace = kubernetes_namespace.monitoring.metadata[0].name
+  }
+
+  spec {
+    pod_selector {
+      match_labels = {
+        app = "prometheus"
+      }
+    }
+
+    policy_types = ["Ingress", "Egress"]
+
+    ingress {
+      from {
+        namespace_selector {
+          match_labels = {
+            name = "self-healing"
+          }
+        }
+      }
+      ports {
+        port     = 9090
+        protocol = "TCP"
+      }
+    }
+
+    ingress {
+      from {
+        namespace_selector {
+          match_labels = {
+            name = "test-app"
+          }
+        }
+      }
+      ports {
+        port     = 9090
+        protocol = "TCP"
+      }
+    }
+
+    egress {
+      to {
+        namespace_selector {
+          match_labels = {
+            name = "self-healing"
+          }
+        }
+      }
+      ports {
+        port     = 8080
+        protocol = "TCP"
+      }
+    }
+
+    egress {
+      to {
+        namespace_selector {
+          match_labels = {
+            name = "test-app"
+          }
+        }
+      }
+      ports {
+        port     = 80
+        protocol = "TCP"
+      }
+    }
+
+    egress {
+      to {
+        namespace_selector {
+          match_labels = {
+            name = "kube-system"
+          }
+        }
+      }
+    }
+  }
+
+  depends_on = [
+    kubernetes_namespace.monitoring
   ]
 } 

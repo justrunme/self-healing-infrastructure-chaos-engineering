@@ -10,63 +10,13 @@ data:
     {
       "dashboard": {
         "id": null,
-        "title": "Self-Healing Infrastructure",
-        "tags": ["self-healing", "kubernetes"],
+        "title": "Self-Healing Infrastructure Dashboard",
+        "tags": ["self-healing", "kubernetes", "monitoring"],
         "style": "dark",
         "timezone": "browser",
         "panels": [
           {
             "id": 1,
-            "title": "Pod Failures",
-            "type": "stat",
-            "targets": [
-              {
-                "expr": "kube_pod_status_phase{phase=\"Failed\"}",
-                "legendFormat": "{{namespace}}/{{pod}}"
-              }
-            ],
-            "fieldConfig": {
-              "defaults": {
-                "color": {
-                  "mode": "thresholds"
-                },
-                "thresholds": {
-                  "steps": [
-                    {"color": "green", "value": 0},
-                    {"color": "red", "value": 1}
-                  ]
-                }
-              }
-            },
-            "gridPos": {"h": 8, "w": 6, "x": 0, "y": 0}
-          },
-          {
-            "id": 2,
-            "title": "Node Status",
-            "type": "stat",
-            "targets": [
-              {
-                "expr": "kube_node_status_condition{condition=\"Ready\"}",
-                "legendFormat": "{{node}}"
-              }
-            ],
-            "fieldConfig": {
-              "defaults": {
-                "color": {
-                  "mode": "thresholds"
-                },
-                "thresholds": {
-                  "steps": [
-                    {"color": "green", "value": 0},
-                    {"color": "red", "value": 1}
-                  ]
-                }
-              }
-            },
-            "gridPos": {"h": 8, "w": 6, "x": 6, "y": 0}
-          },
-          {
-            "id": 3,
             "title": "Self-Healing Controller Status",
             "type": "stat",
             "targets": [
@@ -88,55 +38,156 @@ data:
                 }
               }
             },
+            "gridPos": {"h": 8, "w": 6, "x": 0, "y": 0}
+          },
+          {
+            "id": 2,
+            "title": "Pod Failures",
+            "type": "stat",
+            "targets": [
+              {
+                "expr": "pod_failures_total",
+                "legendFormat": "Total Failures"
+              }
+            ],
+            "fieldConfig": {
+              "defaults": {
+                "color": {
+                  "mode": "palette-classic"
+                }
+              }
+            },
+            "gridPos": {"h": 8, "w": 6, "x": 6, "y": 0}
+          },
+          {
+            "id": 3,
+            "title": "Node Failures",
+            "type": "stat",
+            "targets": [
+              {
+                "expr": "node_failures_total",
+                "legendFormat": "Total Node Failures"
+              }
+            ],
+            "fieldConfig": {
+              "defaults": {
+                "color": {
+                  "mode": "palette-classic"
+                }
+              }
+            },
             "gridPos": {"h": 8, "w": 6, "x": 12, "y": 0}
           },
           {
             "id": 4,
-            "title": "Pod Restarts",
-            "type": "graph",
+            "title": "Helm Rollbacks",
+            "type": "stat",
             "targets": [
               {
-                "expr": "rate(kube_pod_container_status_restarts_total[5m])",
-                "legendFormat": "{{namespace}}/{{pod}}"
+                "expr": "helm_rollbacks_total",
+                "legendFormat": "Total Rollbacks"
+              }
+            ],
+            "fieldConfig": {
+              "defaults": {
+                "color": {
+                  "mode": "palette-classic"
+                }
+              }
+            },
+            "gridPos": {"h": 8, "w": 6, "x": 18, "y": 0}
+          },
+          {
+            "id": 5,
+            "title": "Pod Status by Namespace",
+            "type": "piechart",
+            "targets": [
+              {
+                "expr": "sum by (namespace) (up{namespace=~\".*\"})",
+                "legendFormat": "{{namespace}}"
               }
             ],
             "gridPos": {"h": 8, "w": 12, "x": 0, "y": 8}
           },
           {
-            "id": 5,
-            "title": "CPU Usage",
-            "type": "graph",
+            "id": 6,
+            "title": "CPU Usage by Pod",
+            "type": "timeseries",
             "targets": [
               {
                 "expr": "rate(container_cpu_usage_seconds_total{container!=\"\"}[5m])",
-                "legendFormat": "{{namespace}}/{{pod}}"
+                "legendFormat": "{{pod}}"
               }
             ],
             "gridPos": {"h": 8, "w": 12, "x": 12, "y": 8}
           },
           {
-            "id": 6,
-            "title": "Memory Usage",
-            "type": "graph",
+            "id": 7,
+            "title": "Memory Usage by Pod",
+            "type": "timeseries",
             "targets": [
               {
                 "expr": "container_memory_usage_bytes{container!=\"\"}",
-                "legendFormat": "{{namespace}}/{{pod}}"
+                "legendFormat": "{{pod}}"
               }
             ],
             "gridPos": {"h": 8, "w": 12, "x": 0, "y": 16}
           },
           {
-            "id": 7,
-            "title": "Network Errors",
-            "type": "graph",
+            "id": 8,
+            "title": "Chaos Experiments Status",
+            "type": "stat",
             "targets": [
               {
-                "expr": "rate(container_network_receive_errors_total[5m])",
-                "legendFormat": "{{namespace}}/{{pod}}"
+                "expr": "chaos_experiments_running",
+                "legendFormat": "Active Experiments"
               }
             ],
+            "fieldConfig": {
+              "defaults": {
+                "color": {
+                  "mode": "palette-classic"
+                }
+              }
+            },
             "gridPos": {"h": 8, "w": 12, "x": 12, "y": 16}
+          },
+          {
+            "id": 9,
+            "title": "Kured Status",
+            "type": "stat",
+            "targets": [
+              {
+                "expr": "up{job=\"kured\"}",
+                "legendFormat": "Kured Status"
+              }
+            ],
+            "fieldConfig": {
+              "defaults": {
+                "color": {
+                  "mode": "thresholds"
+                },
+                "thresholds": {
+                  "steps": [
+                    {"color": "red", "value": 0},
+                    {"color": "green", "value": 1}
+                  ]
+                }
+              }
+            },
+            "gridPos": {"h": 8, "w": 6, "x": 0, "y": 24}
+          },
+          {
+            "id": 10,
+            "title": "Prometheus Alerts",
+            "type": "table",
+            "targets": [
+              {
+                "expr": "ALERTS",
+                "legendFormat": "{{alertname}}"
+              }
+            ],
+            "gridPos": {"h": 8, "w": 18, "x": 6, "y": 24}
           }
         ],
         "time": {

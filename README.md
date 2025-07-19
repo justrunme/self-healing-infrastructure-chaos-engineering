@@ -10,18 +10,95 @@ A comprehensive Kubernetes-based self-healing infrastructure that automatically 
 - **Health Monitoring**: Real-time health checks and metrics
 - **Rate Limiting**: Prevents excessive pod checks
 - **Error Handling**: Robust error handling and logging
+- **Security**: Non-root execution, read-only filesystems, dropped capabilities
+- **Resource Management**: CPU and memory limits with requests
 
 ### 📊 **Monitoring Stack**
 - **Prometheus**: Metrics collection and alerting
 - **Grafana**: Custom dashboards for infrastructure monitoring
 - **Alertmanager**: Alert routing and notification management
 - **Custom Alerts**: Pod failures, resource usage, controller status
+- **Comprehensive Dashboards**: Self-healing overview, chaos engineering, cluster health
 
 ### 🔧 **Infrastructure Components**
 - **Kured**: Automatic node reboots for security updates
 - **Test Application**: Nginx with Horizontal Pod Autoscaler (HPA)
 - **Terraform**: Infrastructure as Code for complete deployment
-- **Helm Charts**: Prometheus Stack and Kured deployment
+- **Helm Charts**: Prometheus Stack deployment
+- **Network Policies**: Security isolation between namespaces
+- **Backup System**: Automated daily backups with retention
+
+### 🧪 **Chaos Engineering**
+- **Chaos Mesh**: Comprehensive chaos engineering platform
+- **Automated Experiments**: Pod failures, network chaos, resource stress
+- **Integration**: Seamless integration with self-healing mechanisms
+- **Monitoring**: Real-time experiment status and results
+
+### 🔒 **Security Features**
+- **Network Policies**: Isolated namespace communication
+- **Service Mesh**: Controlled inter-service communication
+- **Port Restrictions**: Only necessary ports are exposed
+- **Non-root Execution**: All containers run as non-root users
+- **Read-only Filesystems**: Where possible
+- **Dropped Capabilities**: Minimal required privileges
+- **Security Contexts**: Enforced at pod and container level
+- **RBAC**: Role-based access control for all components
+- **Service Accounts**: Dedicated accounts for each component
+- **Namespace Isolation**: Resource isolation by namespace
+- **Secret Management**: Secure handling of sensitive data
+- **Resource Limits**: CPU and memory constraints
+
+### 🐳 Docker Registry Integration
+
+### Available Images
+
+The Self-Healing Controller is automatically built and published to GitHub Container Registry:
+
+```bash
+# Pull the latest image
+docker pull ghcr.io/justrunme/self-healing-infrastructure-chaos-engineering/self-healing-controller:latest
+
+# Pull a specific version
+docker pull ghcr.io/justrunme/self-healing-infrastructure-chaos-engineering/self-healing-controller:v1.0.0
+```
+
+### Image Management
+
+Use the provided script to manage Docker images:
+
+```bash
+# Make script executable
+chmod +x scripts/manage-images.sh
+
+# Build a new image
+./scripts/manage-images.sh build v1.0.0
+
+# Create a release
+./scripts/manage-images.sh release v1.0.0
+
+# Update Terraform with new version
+./scripts/manage-images.sh update-terraform v1.0.0
+
+# List available tags
+./scripts/manage-images.sh list
+
+# Clean up old images
+./scripts/manage-images.sh cleanup 3
+```
+
+### Multi-stage Build Benefits
+
+- **Smaller Runtime Images**: Only runtime dependencies included
+- **Better Security**: Reduced attack surface
+- **Faster Builds**: Layer caching optimization
+- **Multi-platform Support**: AMD64 and ARM64 architectures
+
+## 📈 **Performance & Reliability**
+- **Health Checks**: Liveness, readiness, and startup probes
+- **Resource Management**: Optimized resource allocation
+- **Backup & Recovery**: Automated backup system with 7-day retention
+- **Integration Tests**: Comprehensive test coverage
+- **Performance Tests**: Load testing and performance validation
 
 ## 🚀 Quick Start
 
@@ -59,6 +136,8 @@ kubectl apply -f kubernetes/monitoring/
 kubectl apply -f kubernetes/self-healing/deployment-optional-slack.yaml
 kubectl apply -f kubernetes/test-app/test-app.yaml
 kubectl apply -f kubernetes/kured/kured.yaml
+kubectl apply -f kubernetes/chaos-engineering/
+kubectl apply -f kubernetes/backup/
 ```
 
 ## 📁 Project Structure
@@ -72,13 +151,23 @@ self-healing-infrastructure-chaos-engineering/
 │   └── terraform.tfvars.example # Example variables file
 ├── kubernetes/                  # Kubernetes manifests
 │   ├── self-healing/           # Self-Healing Controller
+│   │   ├── tests/              # Unit, integration, and performance tests
+│   │   └── self_healing_controller.py
 │   ├── monitoring/             # Monitoring stack
+│   │   ├── grafana-dashboard.yaml
+│   │   └── prometheus-alerts.yaml
 │   ├── test-app/               # Test application
-│   └── kured/                  # Node reboot daemon
+│   ├── kured/                  # Node reboot daemon
+│   ├── chaos-engineering/      # Chaos Mesh and experiments
+│   └── backup/                 # Backup system
 ├── scripts/                    # Deployment scripts
 │   ├── deploy-terraform.sh     # Terraform deployment
 │   ├── destroy-terraform.sh    # Terraform cleanup
 │   └── test-infrastructure.sh  # Infrastructure testing
+├── docs/                       # Documentation
+│   ├── architecture.md         # System architecture
+│   ├── user-guide.md           # User guide
+│   └── troubleshooting.md      # Troubleshooting guide
 └── .github/workflows/          # CI/CD pipelines
 ```
 
@@ -118,213 +207,3 @@ NODE_UNREACHABLE_TIMEOUT: "600"
 CHECK_INTERVAL: "30"
 SLACK_NOTIFICATIONS_ENABLED: "true"
 ```
-
-## 🌐 Access URLs
-
-After deployment, access the services:
-
-- **📊 Grafana Dashboard**: http://localhost:3000 (admin/admin123)
-- **📈 Prometheus Metrics**: http://localhost:9090
-- **🚨 Alertmanager**: http://localhost:9093
-- **🧪 Test Application**: http://localhost:8080
-- **🔧 Self-Healing Controller**: http://localhost:8081/health
-
-### Port Forwarding
-
-```bash
-# Start all services
-./scripts/start-services.sh
-
-# Or manually
-kubectl port-forward -n monitoring svc/prometheus-grafana 3000:80 &
-kubectl port-forward -n monitoring svc/prometheus-kube-prometheus-prometheus 9090:9090 &
-kubectl port-forward -n monitoring svc/prometheus-kube-prometheus-alertmanager 9093:9093 &
-kubectl port-forward -n test-app svc/test-app 8080:80 &
-kubectl port-forward -n self-healing svc/self-healing-controller 8081:8080 &
-```
-
-## 🧪 Testing
-
-### Test Self-Healing Functionality
-
-```bash
-# Test pod failure recovery
-kubectl run test-fail-pod --image=busybox --command -- /bin/sh -c "sleep 3 && exit 1" -n test-app
-
-# Test crash loop detection
-kubectl run test-crash-pod --image=busybox --command -- /bin/sh -c "exit 1" -n test-app
-
-# Run comprehensive tests
-./scripts/test-infrastructure.sh
-```
-
-### Test Monitoring
-
-```bash
-# Check Prometheus metrics
-curl http://localhost:9090/api/v1/query?query=up
-
-# Check Self-Healing Controller health
-curl http://localhost:8081/health
-
-# Check Self-Healing Controller metrics
-curl http://localhost:8081/metrics
-```
-
-## 📊 Monitoring Dashboards
-
-### Self-Healing Infrastructure Dashboard
-
-The Grafana dashboard includes:
-- Pod failure rates and recovery times
-- Self-Healing Controller status and metrics
-- Resource usage and scaling events
-- Alert history and notification status
-
-### Custom Alerts
-
-Prometheus alerts are configured for:
-- Pod failures and crash loops
-- Self-Healing Controller downtime
-- Resource exhaustion
-- Node failures
-
-## 🔄 CI/CD Pipeline
-
-### GitHub Actions Workflows
-
-1. **Full CI/CD Pipeline** (`.github/workflows/ci-cd.yml`)
-   - Code quality and security scanning
-   - Infrastructure testing with Terraform
-   - Self-Healing Controller testing
-   - Performance and load testing
-
-2. **Quick Test Pipeline** (`.github/workflows/quick-test.yml`)
-   - Fast validation for core functionality
-   - Path-based triggers for efficiency
-
-### Workflow Features
-
-- ✅ **Terraform Integration**: Complete infrastructure deployment
-- ✅ **Self-Healing Tests**: Pod failure and crash loop detection
-- ✅ **Monitoring Tests**: Prometheus, Grafana, Alertmanager connectivity
-- ✅ **Performance Tests**: Scaling and resource limits
-- ✅ **Cleanup Procedures**: Proper resource cleanup
-
-## 🛠️ Troubleshooting
-
-### Common Issues
-
-1. **Minikube Memory Issues**
-   ```bash
-   minikube start --driver=docker --cpus=2 --memory=4096
-   ```
-
-2. **Port Forwarding Conflicts**
-   ```bash
-   pkill -f "kubectl port-forward"
-   ```
-
-3. **Self-Healing Controller Issues**
-   ```bash
-   kubectl logs -n self-healing deployment/self-healing-controller
-   kubectl describe pods -n self-healing
-   ```
-
-4. **Terraform Issues**
-   ```bash
-   cd terraform
-   terraform init
-   terraform validate
-   terraform plan
-   ```
-
-### Debug Commands
-
-```bash
-# Check all components
-kubectl get pods --all-namespaces
-
-# Check services
-kubectl get svc --all-namespaces
-
-# Check events
-kubectl get events --all-namespaces --sort-by='.lastTimestamp'
-
-# Check Self-Healing Controller
-kubectl logs -n self-healing deployment/self-healing-controller
-kubectl describe deployment self-healing-controller -n self-healing
-```
-
-## 🧹 Cleanup
-
-### Terraform Cleanup
-
-```bash
-# Destroy all infrastructure
-./scripts/destroy-terraform.sh
-```
-
-### Manual Cleanup
-
-```bash
-# Delete all resources
-kubectl delete namespace monitoring chaos-engineering self-healing kured test-app
-
-# Stop Minikube
-minikube stop
-minikube delete
-```
-
-## 📈 Performance Metrics
-
-### Resource Usage
-- **Minikube**: 2 CPU, 4GB RAM
-- **Self-Healing Controller**: 250m CPU, 256Mi RAM
-- **Test Application**: 100m CPU, 128Mi RAM per pod
-
-### Success Rates
-- **Self-Healing Controller**: 100% (after fixes)
-- **Monitoring Stack**: 100%
-- **Test Application**: 100%
-- **Integration Tests**: 100%
-
-## 🔮 Future Enhancements
-
-1. **Chaos Engineering**
-   - Fix Chaos Mesh deployment
-   - Add more chaos experiments
-   - Test network failures
-
-2. **Advanced Monitoring**
-   - Custom metrics collection
-   - Predictive failure detection
-   - Machine learning integration
-
-3. **Multi-Cluster Support**
-   - Cross-cluster monitoring
-   - Distributed self-healing
-   - Federation support
-
-4. **Security Enhancements**
-   - RBAC improvements
-   - Network policies
-   - Security scanning
-
-## 🤝 Contributing
-
-1. Fork the repository
-2. Create a feature branch
-3. Make your changes
-4. Add tests
-5. Submit a pull request
-
-## 📄 License
-
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
-
----
-
-**Last Updated**: $(date)
-**Version**: 2.0 (Fixed Self-Healing Controller + Terraform)
-**Status**: ✅ Production Ready 

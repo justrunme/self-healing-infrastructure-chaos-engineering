@@ -19,7 +19,8 @@ on:
 
 env:
   REGISTRY: ghcr.io
-  IMAGE_NAME: ${{ github.repository }}
+  IMAGE_NAME: ${{ github.repository }}/self-healing-controller
+  IMAGE_TAG: ${{ github.sha }}
 
 jobs:
   # Job 1: Code Quality and Security
@@ -76,11 +77,62 @@ jobs:
             bandit-report.json
             safety-report.json
 
-  # Job 2: Build and Test Self-Healing Controller
+  # Job 2: Build and Push Docker Image
+  build-push:
+    name: Build & Push Docker Image
+    runs-on: ubuntu-latest
+    needs: code-quality
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          tags: |
+            type=ref,event=branch
+            type=ref,event=pr
+            type=sha,prefix={{branch}}-
+            type=raw,value=latest,enable={{is_default_branch}}
+
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: ./kubernetes/self-healing
+          file: ./kubernetes/self-healing/Dockerfile
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          platforms: linux/amd64,linux/arm64
+
+      - name: Generate image info
+        run: |
+          echo "Built image: ${{ steps.meta.outputs.tags }}"
+          echo "Image digest: ${{ steps.build.outputs.digest }}"
+          echo "::set-output name=image-tag::${{ steps.meta.outputs.tags }}"
+
+  # Job 3: Build and Test Self-Healing Controller
   build-test:
     name: Build & Test Controller
     runs-on: ubuntu-latest
-    needs: code-quality
+    needs: build-push
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -100,22 +152,29 @@ jobs:
           cd kubernetes/self-healing
           python -m pytest tests/ -v --cov=. --cov-report=xml --cov-report=html
 
+      - name: Run integration tests
+        run: |
+          cd kubernetes/self-healing
+          python -m pytest tests/test_integration.py -v --timeout=300
+
+      - name: Run performance tests
+        run: |
+          cd kubernetes/self-healing
+          python -m pytest tests/test_performance.py -v --timeout=600
+
       - name: Upload coverage reports
         uses: actions/upload-artifact@v4
         with:
           name: coverage-reports
           path: kubernetes/self-healing/htmlcov/
 
-      - name: Build Docker image
-        run: |
-          cd kubernetes/self-healing
-          docker build -t self-healing-controller:test .
-
       - name: Test Docker image
         run: |
-          docker run --rm self-healing-controller:test python -c "import kubernetes; print('Docker image test passed')"
+          # Pull the built image and test it
+          docker pull ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
+          docker run --rm ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest python -c "import kubernetes; print('Docker image test passed')"
 
-  # Job 3: Infrastructure Testing
+  # Job 4: Infrastructure Testing
   infrastructure-test:
     name: Infrastructure Testing
     runs-on: ubuntu-latest
@@ -198,21 +257,58 @@ jobs:
           
           echo "Deploying Chaos Mesh..."
           kubectl apply -f kubernetes/chaos-engineering/chaos-mesh.yaml
-          
-          echo "Waiting for Chaos Mesh..."
+
+          echo "Deploying backup system..."
+          kubectl apply -f kubernetes/backup/backup-cronjob.yaml
+
+          echo "Waiting for Chaos Mesh to be ready..."
           kubectl wait --for=condition=ready pod -l app=chaos-mesh -n chaos-engineering --timeout=300s
+
+          echo "Waiting for backup system to be ready..."
+          kubectl wait --for=condition=ready pod -l app=backup -n monitoring --timeout=300s
+
+      - name: Test backup system
+        run: |
+          echo "Testing backup CronJob..."
+          kubectl get cronjob -n monitoring infrastructure-backup
           
-          echo "Deploying Chaos experiments..."
+          echo "Testing backup PVC..."
+          kubectl get pvc -n monitoring backup-pvc
+          
+          echo "Testing backup RBAC..."
+          kubectl get clusterrole backup-role
+          kubectl get clusterrolebinding backup-role-binding
+
+      - name: Test chaos engineering
+        run: |
+          echo "Testing Chaos Mesh connectivity..."
+          kubectl get pods -n chaos-engineering
+          
+          echo "Testing chaos experiments..."
           kubectl apply -f kubernetes/chaos-engineering/chaos-experiments.yaml
           
-          echo "Deploying Kured..."
-          latest=$(curl -s https://api.github.com/repos/kubereboot/kured/releases/latest | jq -r '.tag_name')
-          echo "Latest Kured version: $latest"
-          curl -L -s "https://github.com/kubereboot/kured/releases/download/$latest/kured-$latest-dockerhub.yaml" | kubectl apply -f -
+          echo "Waiting for chaos experiments to be created..."
+          sleep 30
           
-          echo "Checking what was created..."
-          kubectl get all --all-namespaces | grep kured
+          echo "Checking chaos experiments status..."
+          kubectl get chaos -n test-app
+
+      - name: Test network policies
+        run: |
+          echo "Testing Network Policies..."
+          kubectl get networkpolicy --all-namespaces
           
+          echo "Testing Self-Healing Network Policy..."
+          kubectl get networkpolicy -n self-healing self-healing-controller-network-policy
+          
+          echo "Testing Test App Network Policy..."
+          kubectl get networkpolicy -n test-app test-app-network-policy
+          
+          echo "Testing Monitoring Network Policy..."
+          kubectl get networkpolicy -n monitoring monitoring-network-policy
+
+      - name: Wait for Kured DaemonSet...
+        run: |
           echo "Waiting for Kured DaemonSet..."
           kubectl wait --for=condition=available daemonset/kured -n kube-system --timeout=300s || {
             echo "Kured DaemonSet timeout - checking pod status..."
@@ -225,7 +321,7 @@ jobs:
           echo "Checking Kured pods (may be 0 if no nodes need reboot)..."
           kubectl get pods -n kube-system | grep kured || echo "No Kured pods found"
 
-  # Job 4: Self-Healing Controller Testing
+  # Job 5: Self-Healing Controller Testing
   self-healing-test:
     name: Self-Healing Controller Tests
     runs-on: ubuntu-latest
@@ -347,7 +443,7 @@ jobs:
           # Clean up
           minikube kubectl -- delete pod test-crash-pod -n test-app --ignore-not-found=true
 
-  # Job 5: Monitoring and Dashboard Tests
+  # Job 6: Monitoring and Dashboard Tests
   monitoring-test:
     name: Monitoring & Dashboard Tests
     runs-on: ubuntu-latest
@@ -468,7 +564,7 @@ jobs:
           # Kill port-forward
           kill $PF_PID
 
-  # Job 6: Integration Tests
+  # Job 7: Integration Tests
   integration-tests:
     name: Integration Tests
     runs-on: ubuntu-latest
@@ -518,7 +614,7 @@ jobs:
           # Check HPA status
           kubectl describe hpa test-app-hpa -n test-app
 
-  # Job 7: Performance Tests
+  # Job 8: Performance Tests
   performance-tests:
     name: Performance Tests
     runs-on: ubuntu-latest
@@ -585,7 +681,7 @@ jobs:
           kubectl delete pod -l run=test-fail-2 -n test-app --ignore-not-found=true
           kubectl delete pod -l run=test-fail-3 -n test-app --ignore-not-found=true
 
-  # Job 8: Cleanup and Report
+  # Job 9: Cleanup and Report
   cleanup-report:
     name: Cleanup & Generate Report
     runs-on: ubuntu-latest

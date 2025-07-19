@@ -6,53 +6,9 @@ metadata:
 data:
   alerts.yaml: |
     groups:
-      - name: self-healing-alerts
+      - name: self-healing-infrastructure
         rules:
-          - alert: PodFailure
-            expr: kube_pod_status_phase{phase="Failed"} > 0
-            for: 1m
-            labels:
-              severity: critical
-            annotations:
-              summary: "Pod {{ $labels.pod }} in namespace {{ $labels.namespace }} has failed"
-              description: "Pod {{ $labels.pod }} in namespace {{ $labels.namespace }} is in Failed state for more than 1 minute"
-
-          - alert: PodCrashLooping
-            expr: rate(kube_pod_container_status_restarts_total[5m]) > 0.1
-            for: 2m
-            labels:
-              severity: warning
-            annotations:
-              summary: "Pod {{ $labels.pod }} in namespace {{ $labels.namespace }} is crash looping"
-              description: "Pod {{ $labels.pod }} in namespace {{ $labels.namespace }} is restarting more than 6 times per minute"
-
-          - alert: NodeNotReady
-            expr: kube_node_status_condition{condition="Ready",status="false"} > 0
-            for: 5m
-            labels:
-              severity: critical
-            annotations:
-              summary: "Node {{ $labels.node }} is not ready"
-              description: "Node {{ $labels.node }} has been in NotReady state for more than 5 minutes"
-
-          - alert: HighCPUUsage
-            expr: (rate(container_cpu_usage_seconds_total{container!=""}[5m]) * 100) > 80
-            for: 5m
-            labels:
-              severity: warning
-            annotations:
-              summary: "High CPU usage on {{ $labels.pod }}"
-              description: "Pod {{ $labels.pod }} in namespace {{ $labels.namespace }} is using more than 80% CPU"
-
-          - alert: HighMemoryUsage
-            expr: (container_memory_usage_bytes{container!=""} / container_spec_memory_limit_bytes{container!=""}) * 100 > 85
-            for: 5m
-            labels:
-              severity: warning
-            annotations:
-              summary: "High memory usage on {{ $labels.pod }}"
-              description: "Pod {{ $labels.pod }} in namespace {{ $labels.namespace }} is using more than 85% of memory limit"
-
+          # Self-Healing Controller Alerts
           - alert: SelfHealingControllerDown
             expr: up{job="self-healing-controller"} == 0
             for: 1m
@@ -60,31 +16,203 @@ data:
               severity: critical
             annotations:
               summary: "Self-Healing Controller is down"
-              description: "Self-Healing Controller pod is not responding"
+              description: "Self-Healing Controller has been down for more than 1 minute"
 
-          - alert: TooManyPodRestarts
-            expr: increase(kube_pod_container_status_restarts_total[1h]) > 10
+          - alert: SelfHealingControllerHighErrorRate
+            expr: rate(self_healing_errors_total[5m]) > 0.1
+            for: 2m
+            labels:
+              severity: warning
+            annotations:
+              summary: "Self-Healing Controller has high error rate"
+              description: "Self-Healing Controller is experiencing errors at rate {{ $value }} errors/second"
+
+          # Pod Failure Alerts
+          - alert: HighPodFailureRate
+            expr: rate(pod_failures_total[5m]) > 0.5
+            for: 2m
+            labels:
+              severity: warning
+            annotations:
+              summary: "High pod failure rate detected"
+              description: "Pod failure rate is {{ $value }} failures/second"
+
+          - alert: PodCrashLooping
+            expr: increase(kube_pod_container_status_restarts_total[15m]) > 10
+            for: 1m
+            labels:
+              severity: critical
+            annotations:
+              summary: "Pod is crash looping"
+              description: "Pod {{ $labels.pod }} in namespace {{ $labels.namespace }} is crash looping"
+
+          # Node Failure Alerts
+          - alert: NodeFailure
+            expr: up{job="kubelet"} == 0
+            for: 2m
+            labels:
+              severity: critical
+            annotations:
+              summary: "Node is down"
+              description: "Node {{ $labels.instance }} is down"
+
+          - alert: HighNodeFailureRate
+            expr: rate(node_failures_total[5m]) > 0.1
+            for: 2m
+            labels:
+              severity: warning
+            annotations:
+              summary: "High node failure rate detected"
+              description: "Node failure rate is {{ $value }} failures/second"
+
+          # Resource Usage Alerts
+          - alert: HighCPUUsage
+            expr: 100 - (avg by(instance) (rate(node_cpu_seconds_total{mode="idle"}[5m])) * 100) > 80
+            for: 5m
+            labels:
+              severity: warning
+            annotations:
+              summary: "High CPU usage on node"
+              description: "CPU usage on {{ $labels.instance }} is {{ $value }}%"
+
+          - alert: HighMemoryUsage
+            expr: (node_memory_MemTotal_bytes - node_memory_MemAvailable_bytes) / node_memory_MemTotal_bytes * 100 > 85
+            for: 5m
+            labels:
+              severity: warning
+            annotations:
+              summary: "High memory usage on node"
+              description: "Memory usage on {{ $labels.instance }} is {{ $value }}%"
+
+          - alert: HighDiskUsage
+            expr: (node_filesystem_size_bytes - node_filesystem_free_bytes) / node_filesystem_size_bytes * 100 > 85
+            for: 5m
+            labels:
+              severity: warning
+            annotations:
+              summary: "High disk usage on node"
+              description: "Disk usage on {{ $labels.instance }} is {{ $value }}%"
+
+          # Chaos Engineering Alerts
+          - alert: ChaosExperimentFailed
+            expr: chaos_experiment_status{status="failed"} > 0
             for: 1m
             labels:
               severity: warning
             annotations:
-              summary: "Too many pod restarts on {{ $labels.pod }}"
-              description: "Pod {{ $labels.pod }} in namespace {{ $labels.namespace }} has been restarted more than 10 times in the last hour"
+              summary: "Chaos experiment failed"
+              description: "Chaos experiment {{ $labels.experiment_name }} has failed"
 
-          - alert: NetworkErrors
-            expr: rate(container_network_receive_errors_total[5m]) > 0.1
-            for: 5m
+          - alert: TooManyChaosExperiments
+            expr: chaos_experiments_running > 5
+            for: 1m
             labels:
               severity: warning
             annotations:
-              summary: "Network errors on {{ $labels.pod }}"
-              description: "Pod {{ $labels.pod }} in namespace {{ $labels.namespace }} is experiencing network errors"
+              summary: "Too many chaos experiments running"
+              description: "{{ $value }} chaos experiments are currently running"
 
-          - alert: DiskSpaceLow
-            expr: (node_filesystem_avail_bytes{mountpoint="/"} / node_filesystem_size_bytes{mountpoint="/"}) * 100 < 10
-            for: 5m
+          # Kured Alerts
+          - alert: KuredDown
+            expr: up{job="kured"} == 0
+            for: 2m
+            labels:
+              severity: critical
+            annotations:
+              summary: "Kured is down"
+              description: "Kured daemon is not running"
+
+          - alert: NodeRebootRequired
+            expr: kured_reboot_required > 0
+            for: 1m
+            labels:
+              severity: info
+            annotations:
+              summary: "Node reboot required"
+              description: "Node {{ $labels.node }} requires a reboot"
+
+          # Test Application Alerts
+          - alert: TestApplicationDown
+            expr: up{job="test-app"} == 0
+            for: 1m
+            labels:
+              severity: critical
+            annotations:
+              summary: "Test application is down"
+              description: "Test application is not responding"
+
+          - alert: TestApplicationHighLatency
+            expr: histogram_quantile(0.95, rate(http_request_duration_seconds_bucket{job="test-app"}[5m])) > 1
+            for: 2m
             labels:
               severity: warning
             annotations:
-              summary: "Low disk space on {{ $labels.instance }}"
-              description: "Node {{ $labels.instance }} has less than 10% disk space available"
+              summary: "Test application has high latency"
+              description: "95th percentile latency is {{ $value }} seconds"
+
+          # Prometheus Stack Alerts
+          - alert: PrometheusDown
+            expr: up{job="prometheus"} == 0
+            for: 1m
+            labels:
+              severity: critical
+            annotations:
+              summary: "Prometheus is down"
+              description: "Prometheus is not responding"
+
+          - alert: GrafanaDown
+            expr: up{job="grafana"} == 0
+            for: 1m
+            labels:
+              severity: critical
+            annotations:
+              summary: "Grafana is down"
+              description: "Grafana is not responding"
+
+          - alert: AlertmanagerDown
+            expr: up{job="alertmanager"} == 0
+            for: 1m
+            labels:
+              severity: critical
+            annotations:
+              summary: "Alertmanager is down"
+              description: "Alertmanager is not responding"
+
+          # Network Policy Alerts
+          - alert: NetworkPolicyViolation
+            expr: increase(network_policy_violations_total[5m]) > 0
+            for: 1m
+            labels:
+              severity: warning
+            annotations:
+              summary: "Network policy violation detected"
+              description: "{{ $value }} network policy violations in the last 5 minutes"
+
+          # Security Alerts
+          - alert: PodSecurityViolation
+            expr: increase(pod_security_violations_total[5m]) > 0
+            for: 1m
+            labels:
+              severity: critical
+            annotations:
+              summary: "Pod security violation detected"
+              description: "{{ $value }} pod security violations in the last 5 minutes"
+
+          # Backup Alerts
+          - alert: BackupFailed
+            expr: backup_status{status="failed"} > 0
+            for: 1m
+            labels:
+              severity: critical
+            annotations:
+              summary: "Backup failed"
+              description: "Backup {{ $labels.backup_name }} has failed"
+
+          - alert: BackupTooOld
+            expr: time() - backup_last_success_timestamp > 86400
+            for: 1h
+            labels:
+              severity: warning
+            annotations:
+              summary: "Backup is too old"
+              description: "Last successful backup was more than 24 hours ago"

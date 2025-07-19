@@ -2,223 +2,289 @@
 
 ## Overview
 
-The Self-Healing Infrastructure with Chaos Engineering is a comprehensive system designed to automatically detect and recover from failures in Kubernetes clusters while continuously testing the system's resilience through chaos engineering practices.
+The Self-Healing Infrastructure is a comprehensive Kubernetes-based system that automatically detects and recovers from failures, with integrated monitoring, chaos engineering, and automated node reboots.
 
-## System Components
+## Architecture Components
 
 ### 1. Self-Healing Controller
 
-The core component responsible for monitoring and automatic recovery.
+**Purpose**: Core component that monitors the cluster and performs automatic recovery actions.
 
-**Key Features:**
-- Real-time monitoring of pods and nodes
-- Automatic pod restart on failures
-- Helm release rollback capabilities
-- Integration with Kured for node reboots
-- Slack notifications for incidents
+**Key Features**:
+- Pod failure detection and recovery
+- Crash loop detection and handling
+- Node failure monitoring
+- Helm release rollback management
+- Integration with Chaos Mesh
+- Slack notifications
 
-**Architecture:**
+**Architecture**:
 ```
 ┌─────────────────────────────────────────────────────────────┐
 │                    Self-Healing Controller                  │
 ├─────────────────────────────────────────────────────────────┤
 │  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐         │
-│  │ Pod Monitor │  │Node Monitor │  │Helm Monitor │         │
+│  │ Pod Monitor │  │Node Monitor │  │Health Server│         │
 │  └─────────────┘  └─────────────┘  └─────────────┘         │
-├─────────────────────────────────────────────────────────────┤
+│         │                │                │                │
+│         └────────────────┼────────────────┘                │
+│                          │                                 │
 │  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐         │
-│  │   Recovery  │  │  Rollback   │  │Notification │         │
-│  │   Engine    │  │   Engine    │  │   Engine    │         │
+│  │ Recovery    │  │ Metrics     │  │ Slack       │         │
+│  │ Engine      │  │ Collector   │  │ Notifier    │         │
 │  └─────────────┘  └─────────────┘  └─────────────┘         │
 └─────────────────────────────────────────────────────────────┘
 ```
 
+**Configuration**:
+- Environment-based configuration
+- Configurable thresholds and timeouts
+- Prometheus metrics integration
+- Slack webhook integration
+
 ### 2. Monitoring Stack
 
-**Prometheus:**
-- Collects metrics from all components
-- Stores time-series data
-- Provides query interface
+**Components**:
+- **Prometheus**: Metrics collection and alerting
+- **Grafana**: Custom dashboards and visualization
+- **Alertmanager**: Alert routing and notification management
 
-**Alertmanager:**
-- Manages alert routing
-- Handles notification delivery
-- Supports Slack integration
+**Architecture**:
+```
+┌─────────────────────────────────────────────────────────────┐
+│                    Monitoring Stack                        │
+├─────────────────────────────────────────────────────────────┤
+│  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐         │
+│  │ Prometheus  │  │  Grafana    │  │Alertmanager │         │
+│  │             │  │             │  │             │         │
+│  │ • Metrics   │  │ • Dashboards│  │ • Alerts    │         │
+│  │ • Rules     │  │ • Queries   │  │ • Routing   │         │
+│  │ • Scraping  │  │ • Viz       │  │ • Notify    │         │
+│  └─────────────┘  └─────────────┘  └─────────────┘         │
+└─────────────────────────────────────────────────────────────┘
+```
 
-**Grafana:**
-- Visualization dashboard
-- Custom metrics display
-- Historical data analysis
+**Custom Dashboards**:
+- Self-Healing Infrastructure Overview
+- Pod and Node Health Status
+- Chaos Engineering Experiments
+- Resource Usage Monitoring
+- Alert History
+
+**Alert Rules**:
+- Pod failure detection
+- Node failure alerts
+- Resource usage warnings
+- Chaos experiment status
+- Security violations
 
 ### 3. Chaos Engineering
 
-**Chaos Mesh:**
-- Pod failure simulation
-- Network chaos (delay, loss, corruption)
-- Resource stress testing (CPU, memory)
-- Container kill experiments
+**Purpose**: Test system resilience and recovery mechanisms.
 
-**Chaos Experiments:**
-- Scheduled chaos tests
-- Automated failure injection
-- Resilience validation
+**Components**:
+- **Chaos Mesh**: Chaos engineering platform
+- **Chaos Experiments**: Predefined failure scenarios
+- **Integration**: Automatic experiment management
 
-### 4. Kured Integration
-
-**Automatic Node Reboots:**
-- Detects nodes requiring reboots
-- Coordinates reboots across cluster
-- Ensures high availability during reboots
-
-## Data Flow
-
-### 1. Failure Detection Flow
-
+**Architecture**:
 ```
-Kubernetes Cluster
-        │
-        ▼
-   Prometheus Metrics
-        │
-        ▼
-   Self-Healing Controller
-        │
-        ▼
-   Failure Analysis
-        │
-        ▼
-   Recovery Actions
+┌─────────────────────────────────────────────────────────────┐
+│                  Chaos Engineering                         │
+├─────────────────────────────────────────────────────────────┤
+│  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐         │
+│  │ Chaos Mesh  │  │ Experiments │  │ Integration │         │
+│  │ Controller  │  │             │  │             │         │
+│  │             │  │ • Pod Chaos │  │ • Auto      │         │
+│  │ • Pod Chaos │  │ • Network   │  │   Recovery  │         │
+│  │ • Network   │  │ • CPU/Mem   │  │ • Monitoring│         │
+│  │ • CPU/Mem   │  │ • Container │  │ • Metrics   │         │
+│  └─────────────┘  └─────────────┘  └─────────────┘         │
+└─────────────────────────────────────────────────────────────┘
 ```
 
-### 2. Alert Flow
+**Experiment Types**:
+- Pod failures and restarts
+- Network delays and packet loss
+- CPU and memory stress
+- Container kills
+- Node failures
 
+### 4. Infrastructure Components
+
+#### Kured (Kubernetes Reboot Daemon)
+- **Purpose**: Automatic node reboots for security updates
+- **Deployment**: DaemonSet on all nodes
+- **Integration**: Slack notifications for reboots
+
+#### Test Application
+- **Purpose**: Simulate real application workloads
+- **Components**: Nginx with Horizontal Pod Autoscaler
+- **Monitoring**: Health checks and metrics collection
+
+### 5. Security Architecture
+
+#### Network Policies
 ```
-Prometheus Alert
-        │
-        ▼
-   Alertmanager
-        │
-        ▼
-   Slack Notification
-        │
-        ▼
-   Incident Response
+┌─────────────────────────────────────────────────────────────┐
+│                    Network Security                        │
+├─────────────────────────────────────────────────────────────┤
+│  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐         │
+│  │ Self-Healing│  │ Test App    │  │ Monitoring  │         │
+│  │ Network     │  │ Network     │  │ Network     │         │
+│  │ Policy      │  │ Policy      │  │ Policy      │         │
+│  └─────────────┘  └─────────────┘  └─────────────┘         │
+└─────────────────────────────────────────────────────────────┘
 ```
 
-### 3. Chaos Testing Flow
+**Policy Rules**:
+- Isolated namespace communication
+- Restricted ingress/egress traffic
+- Service-specific port access
+- Inter-namespace communication control
 
+#### Security Contexts
+- **Non-root execution**: All containers run as non-root users
+- **Read-only filesystems**: Where possible
+- **Privilege escalation prevention**: Dropped capabilities
+- **Resource limits**: CPU and memory constraints
+
+### 6. Backup and Recovery
+
+#### Backup Strategy
 ```
-Chaos Mesh Controller
-        │
-        ▼
-   Chaos Experiments
-        │
-        ▼
-   Failure Injection
-        │
-        ▼
-   System Response
-        │
-        ▼
-   Recovery Validation
+┌─────────────────────────────────────────────────────────────┐
+│                    Backup System                           │
+├─────────────────────────────────────────────────────────────┤
+│  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐         │
+│  │ CronJob     │  │ Storage     │  │ Retention   │         │
+│  │ Scheduler   │  │ PVC         │  │ Policy      │         │
+│  │             │  │             │  │             │         │
+│  │ • Daily     │  │ • 10Gi      │  │ • 7 days    │         │
+│  │ • 2 AM      │  │ • Persistent│  │ • Cleanup   │         │
+│  └─────────────┘  └─────────────┘  └─────────────┘         │
+└─────────────────────────────────────────────────────────────┘
 ```
 
-## Security Considerations
+**Backup Components**:
+- Kubernetes resources (YAML manifests)
+- Prometheus data
+- Grafana dashboards
+- Terraform state
+- Configuration files
 
-### 1. RBAC Configuration
+**Recovery Process**:
+1. Restore Kubernetes resources
+2. Restore Prometheus data
+3. Restore Grafana dashboards
+4. Verify system health
+5. Run integration tests
 
-- Minimal required permissions for each component
-- Service account isolation
-- Namespace-based access control
+### 7. CI/CD Pipeline
 
-### 2. Network Security
+#### GitHub Actions Workflow
+```
+┌─────────────────────────────────────────────────────────────┐
+│                    CI/CD Pipeline                          │
+├─────────────────────────────────────────────────────────────┤
+│  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐         │
+│  │ Code Quality│  │ Build & Test│  │ Infrastructure│       │
+│  │             │  │             │  │             │         │
+│  │ • Linting   │  │ • Unit Tests│  │ • Terraform │         │
+│  │ • Security  │  │ • Coverage  │  │ • Deploy    │         │
+│  │ • Validation│  │ • Docker    │  │ • Test      │         │
+│  └─────────────┘  └─────────────┘  └─────────────┘         │
+└─────────────────────────────────────────────────────────────┘
+```
 
-- Internal service communication only
-- No external access by default
-- TLS encryption for sensitive data
+**Pipeline Stages**:
+1. **Code Quality**: Linting, security scanning, validation
+2. **Build & Test**: Unit tests, coverage, Docker builds
+3. **Infrastructure**: Terraform deployment, integration tests
+4. **Performance**: Load testing, chaos engineering tests
 
-### 3. Secret Management
+### 8. Data Flow
 
-- Kubernetes secrets for sensitive data
-- Environment variable injection
-- No hardcoded credentials
+#### Monitoring Data Flow
+```
+┌─────────────┐    ┌─────────────┐    ┌─────────────┐
+│ Applications│───▶│ Prometheus  │───▶│   Grafana   │
+└─────────────┘    └─────────────┘    └─────────────┘
+       │                   │                   │
+       │                   ▼                   ▼
+       │            ┌─────────────┐    ┌─────────────┐
+       └───────────▶│Alertmanager │    │   Slack     │
+                    └─────────────┘    └─────────────┘
+```
 
-## Scalability
+#### Self-Healing Data Flow
+```
+┌─────────────┐    ┌─────────────┐    ┌─────────────┐
+│   Pods      │───▶│ Self-Healing│───▶│  Recovery   │
+│  Nodes      │    │ Controller  │    │   Actions   │
+└─────────────┘    └─────────────┘    └─────────────┘
+       ▲                   │                   │
+       │                   ▼                   ▼
+       │            ┌─────────────┐    ┌─────────────┐
+       └────────────│  Metrics    │    │   Slack     │
+                    └─────────────┘    └─────────────┘
+```
 
-### 1. Horizontal Scaling
+### 9. Scalability Considerations
 
-- Self-healing controller can be scaled horizontally
-- Multiple monitoring instances
-- Load-balanced chaos experiments
+#### Horizontal Scaling
+- **Self-Healing Controller**: Single instance (can be scaled if needed)
+- **Test Application**: Horizontal Pod Autoscaler
+- **Monitoring**: Prometheus and Grafana can be scaled
+- **Chaos Mesh**: Controller can handle multiple experiments
 
-### 2. Resource Management
+#### Resource Management
+- **Resource Limits**: All components have CPU/memory limits
+- **Resource Requests**: Guaranteed resources for critical components
+- **Storage**: Persistent volumes for data retention
+- **Network**: Bandwidth considerations for monitoring traffic
 
-- Configurable resource limits
-- Auto-scaling based on load
-- Efficient resource utilization
+### 10. Disaster Recovery
 
-### 3. Multi-Cluster Support
+#### Recovery Scenarios
+1. **Pod Failures**: Automatic restart and recovery
+2. **Node Failures**: Automatic node reboot via Kured
+3. **Service Failures**: Health checks and automatic recovery
+4. **Data Loss**: Backup restoration from persistent storage
+5. **Configuration Loss**: Git-based configuration management
 
-- Can be deployed across multiple clusters
-- Centralized monitoring
-- Cross-cluster chaos testing
+#### Recovery Time Objectives (RTO)
+- **Pod Recovery**: < 30 seconds
+- **Node Recovery**: < 5 minutes
+- **Service Recovery**: < 2 minutes
+- **Full System Recovery**: < 15 minutes
 
-## Monitoring and Observability
+### 11. Performance Characteristics
 
-### 1. Metrics Collection
+#### Latency Requirements
+- **Health Check Response**: < 1 second
+- **Metrics Collection**: < 5 seconds
+- **Alert Generation**: < 10 seconds
+- **Pod Recovery**: < 30 seconds
 
-- Custom metrics for self-healing actions
-- Chaos experiment metrics
-- System health indicators
+#### Throughput Requirements
+- **Concurrent Pod Monitoring**: 100+ pods
+- **Metrics Collection**: 1000+ metrics/second
+- **Alert Processing**: 100+ alerts/minute
+- **Chaos Experiments**: 10+ concurrent experiments
 
-### 2. Logging
+### 12. Security Considerations
 
-- Structured logging across all components
-- Centralized log collection
-- Log retention policies
+#### Authentication & Authorization
+- **Service Accounts**: Kubernetes RBAC
+- **API Access**: Token-based authentication
+- **Network Access**: Network policies
+- **Secret Management**: Kubernetes secrets
 
-### 3. Tracing
+#### Compliance
+- **Data Protection**: Encrypted storage
+- **Audit Logging**: Kubernetes audit logs
+- **Access Control**: Principle of least privilege
+- **Monitoring**: Security event monitoring
 
-- Distributed tracing for complex operations
-- Performance monitoring
-- Bottleneck identification
-
-## Disaster Recovery
-
-### 1. Backup Strategy
-
-- Configuration backup
-- State persistence
-- Recovery procedures
-
-### 2. Failover Mechanisms
-
-- Multi-zone deployment
-- Automatic failover
-- Data replication
-
-### 3. Testing
-
-- Regular disaster recovery drills
-- Automated recovery testing
-- Documentation updates
-
-## Performance Considerations
-
-### 1. Resource Optimization
-
-- Efficient monitoring queries
-- Optimized chaos experiments
-- Minimal resource footprint
-
-### 2. Latency Management
-
-- Fast failure detection
-- Quick recovery actions
-- Minimal alert delays
-
-### 3. Throughput
-
-- Handle multiple concurrent failures
-- Scale with cluster size
-- Efficient resource utilization 
+This architecture provides a robust, scalable, and secure foundation for self-healing infrastructure with comprehensive monitoring, chaos engineering, and automated recovery capabilities. 

@@ -1,0 +1,147 @@
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: infrastructure-backup
+  namespace: monitoring
+  labels:
+    app: backup
+spec:
+  schedule: "0 2 * * *"  # Daily at 2 AM
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 7
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          serviceAccountName: backup-service-account
+          containers:
+          - name: backup
+            image: bitnami/kubectl:latest
+            command:
+            - /bin/bash
+            - -c
+            - |
+              set -e
+              
+              # Create backup directory
+              BACKUP_DIR="/backup/$(date +%Y%m%d-%H%M%S)"
+              mkdir -p $BACKUP_DIR
+              
+              # Backup namespaces
+              for ns in self-healing test-app monitoring chaos-engineering; do
+                echo "Backing up namespace: $ns"
+                kubectl get all -n $ns -o yaml > $BACKUP_DIR/$ns-resources.yaml
+                kubectl get configmap -n $ns -o yaml > $BACKUP_DIR/$ns-configmaps.yaml
+                kubectl get secret -n $ns -o yaml > $BACKUP_DIR/$ns-secrets.yaml
+              done
+              
+              # Backup Prometheus data
+              echo "Backing up Prometheus data"
+              kubectl exec -n monitoring deployment/prometheus-kube-prometheus-prometheus -- tar czf - /prometheus > $BACKUP_DIR/prometheus-data.tar.gz
+              
+              # Backup Grafana dashboards
+              echo "Backing up Grafana dashboards"
+              kubectl get configmap -n monitoring -l grafana_dashboard=1 -o yaml > $BACKUP_DIR/grafana-dashboards.yaml
+              
+              # Backup Terraform state
+              echo "Backing up Terraform state"
+              if [ -f /terraform/terraform.tfstate ]; then
+                cp /terraform/terraform.tfstate $BACKUP_DIR/
+              fi
+              
+              # Create backup manifest
+              cat > $BACKUP_DIR/backup-manifest.yaml <<EOF
+              apiVersion: v1
+              kind: ConfigMap
+              metadata:
+                name: backup-manifest-$(date +%Y%m%d-%H%M%S)
+                namespace: monitoring
+                labels:
+                  app: backup
+                  timestamp: "$(date +%Y%m%d-%H%M%S)"
+              data:
+                backup-timestamp: "$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+                backup-version: "1.0"
+                backup-components: "self-healing,test-app,monitoring,chaos-engineering"
+              EOF
+              
+              # Apply backup manifest
+              kubectl apply -f $BACKUP_DIR/backup-manifest.yaml
+              
+              # Cleanup old backups (keep last 7 days)
+              find /backup -type d -mtime +7 -exec rm -rf {} \;
+              
+              echo "Backup completed successfully"
+            volumeMounts:
+            - name: backup-storage
+              mountPath: /backup
+            - name: terraform-state
+              mountPath: /terraform
+              readOnly: true
+          volumes:
+          - name: backup-storage
+            persistentVolumeClaim:
+              claimName: backup-pvc
+          - name: terraform-state
+            configMap:
+              name: terraform-state
+          restartPolicy: OnFailure
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: backup-service-account
+  namespace: monitoring
+  labels:
+    app: backup
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: backup-role
+  labels:
+    app: backup
+rules:
+- apiGroups: [""]
+  resources: ["pods", "services", "configmaps", "secrets", "persistentvolumeclaims"]
+  verbs: ["get", "list"]
+- apiGroups: ["apps"]
+  resources: ["deployments", "daemonsets", "statefulsets"]
+  verbs: ["get", "list"]
+- apiGroups: ["batch"]
+  resources: ["cronjobs", "jobs"]
+  verbs: ["get", "list"]
+- apiGroups: ["chaos-mesh.org"]
+  resources: ["*"]
+  verbs: ["get", "list"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: backup-role-binding
+  labels:
+    app: backup
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: backup-role
+subjects:
+- kind: ServiceAccount
+  name: backup-service-account
+  namespace: monitoring
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: backup-pvc
+  namespace: monitoring
+  labels:
+    app: backup
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 10Gi
+  storageClassName: standard 

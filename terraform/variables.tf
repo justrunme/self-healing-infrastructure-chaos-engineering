@@ -41,10 +41,29 @@ variable "grafana_admin_password" {
   sensitive   = true
 }
 
+# Docker Registry Configuration
+variable "docker_registry" {
+  description = "Docker registry URL"
+  type        = string
+  default     = "ghcr.io"
+}
+
+variable "docker_image_name" {
+  description = "Docker image name"
+  type        = string
+  default     = "justrunme/self-healing-infrastructure-chaos-engineering/self-healing-controller"
+}
+
+variable "docker_image_tag" {
+  description = "Docker image tag"
+  type        = string
+  default     = "latest"
+}
+
 variable "self_healing_controller_image" {
   description = "Self-Healing Controller Docker image"
   type        = string
-  default     = "self-healing-controller:latest"
+  default     = "ghcr.io/justrunme/self-healing-infrastructure-chaos-engineering/self-healing-controller:latest"
 }
 
 variable "alertmanager_config" {
