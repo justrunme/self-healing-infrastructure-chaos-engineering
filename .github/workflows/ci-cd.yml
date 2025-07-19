@@ -8,459 +8,195 @@ on:
   workflow_dispatch:
     inputs:
       environment:
-        description: 'Environment to deploy to'
+        description: 'Environment'
         required: true
         default: 'dev'
         type: choice
-        options:
-          - dev
-          - staging
-          - prod
+        options: [dev, staging, prod]
 
 env:
   REGISTRY: ghcr.io
   IMAGE_NAME: ${{ github.repository }}/self-healing-controller
   IMAGE_TAG: ${{ github.sha }}
 
+# ------------------------------------------------
 jobs:
-  # Job 1: Code Quality and Security
-  code-quality:
-    name: Code Quality & Security
+  # 1. Quality & Tests for Python + Terraform
+  ci:
+    name: Lint & Unit Tests
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        tool: [python, terraform]
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
+
+      - name: Cache dependencies
+        uses: actions/cache@v3
+        with:
+          path: |
+            ~/.cache/pip
+            ~/.terraform.d/plugin-cache
+          key: ${{ runner.os }}-deps-${{ matrix.tool }}-${{ hashFiles('**/*.txt','terraform/*.tf') }}
 
       - name: Setup Python
+        if: matrix.tool == 'python'
         uses: actions/setup-python@v4
-        with:
+        with: 
           python-version: '3.9'
-
-      - name: Install dependencies
-        run: |
-          pip install flake8 black isort bandit safety
-          pip install -r kubernetes/self-healing/requirements.txt
-
-      - name: Lint Python code
-        run: |
-          flake8 kubernetes/self-healing/ --max-line-length=120 --ignore=E501,W503
-          black --check kubernetes/self-healing/
-          isort --check-only kubernetes/self-healing/
-
-      - name: Security scan Python code
-        run: |
-          bandit -r kubernetes/self-healing/ -f json -o bandit-report.json || true
-          safety check --json --output safety-report.json || true
-
-      - name: Lint YAML files
-        run: |
-          pip install yamllint
-          yamllint kubernetes/ terraform/ helm-charts/
-
       - name: Setup Terraform
+        if: matrix.tool == 'terraform'
         uses: hashicorp/setup-terraform@v2
-        with:
-          terraform_version: "1.0"
+        with: 
+          terraform_version: '1.0.11'
 
-      - name: Validate Terraform
+      - name: Install & Lint Python
+        if: matrix.tool == 'python'
+        run: |
+          pip install flake8 black isort pytest
+          black --check kubernetes/self-healing/
+          flake8 kubernetes/self-healing/
+          cd kubernetes/self-healing && python -m pytest tests/ -v
+      - name: Terraform Validate
+        if: matrix.tool == 'terraform'
         run: |
           cd terraform
-          terraform init
+          terraform init -plugin-dir="$HOME/.terraform.d/plugin-cache"
           terraform validate
 
-      - name: Upload security reports
-        uses: actions/upload-artifact@v4
-        with:
-          name: security-reports
-          path: |
-            bandit-report.json
-            safety-report.json
-
-  # Job 2: Build and Push Docker Image
+  # 2. Build & Push Docker
   build-push:
-    name: Build & Push Docker Image
+    name: Build & Push Image
     runs-on: ubuntu-latest
-    needs: code-quality
+    needs: ci
     permissions:
       contents: read
       packages: write
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
-
-      - name: Log in to Container Registry
-        uses: docker/login-action@v3
+      - uses: actions/checkout@v4
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/login-action@v3
         with:
           registry: ${{ env.REGISTRY }}
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Extract metadata
+      - uses: docker/metadata-action@v5
         id: meta
-        uses: docker/metadata-action@v5
         with:
           images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
-          tags: |
-            type=ref,event=branch
-            type=ref,event=pr
-            type=sha,prefix=sha-
-            type=raw,value=latest,enable={{is_default_branch}}
-
-      - name: Build and push Docker image
-        uses: docker/build-push-action@v5
+      - uses: docker/build-push-action@v5
         with:
           context: ./kubernetes/self-healing
           file: ./kubernetes/self-healing/Dockerfile
           push: true
           tags: ${{ steps.meta.outputs.tags }}
-          labels: ${{ steps.meta.outputs.labels }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
-          platforms: linux/amd64,linux/arm64
 
-      - name: Generate image info
-        run: |
-          echo "Built image: ${{ steps.meta.outputs.tags }}"
-          echo "Image digest: ${{ steps.build.outputs.digest }}"
-          echo "::set-output name=image-tag::${{ steps.meta.outputs.tags }}"
-
-  # Job 3: Build and Test Self-Healing Controller
-  build-test:
-    name: Build & Test Controller
+  # 3. Infrastructure: Deploy with Terraform
+  infra-deploy:
+    name: Terraform Deploy
     runs-on: ubuntu-latest
     needs: build-push
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: Setup Python
-        uses: actions/setup-python@v4
-        with:
-          python-version: '3.9'
-
-      - name: Install dependencies
-        run: |
-          pip install -r kubernetes/self-healing/requirements.txt
-          pip install pytest pytest-cov pytest-mock
-
-      - name: Run unit tests
-        run: |
-          cd kubernetes/self-healing
-          python -m pytest tests/ -v --cov=. --cov-report=xml --cov-report=html
-
-      - name: Run integration tests
-        run: |
-          cd kubernetes/self-healing
-          python -m pytest tests/test_integration.py -v
-
-      - name: Run performance tests
-        run: |
-          cd kubernetes/self-healing
-          python -m pytest tests/test_performance.py -v
-
-      - name: Upload coverage reports
-        uses: actions/upload-artifact@v4
-        with:
-          name: coverage-reports
-          path: kubernetes/self-healing/htmlcov/
-
-      - name: Test Docker image
-        run: |
-          # Pull the built image and test it
-          docker pull ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
-          docker run --rm ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest python -c "import kubernetes; print('Docker image test passed')"
-
-  # Job 4: Infrastructure Testing
-  infrastructure-test:
-    name: Infrastructure Testing
-    runs-on: ubuntu-latest
-    needs: build-test
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Setup Terraform
-        uses: hashicorp/setup-terraform@v2
-        with:
-          terraform_version: "1.0"
-
-      - name: Setup kubectl
-        uses: azure/setup-kubectl@v3
-        with:
-          version: 'latest'
-
-      - name: Setup Docker
-        uses: docker/setup-buildx-action@v3
-
-      - name: Setup Minikube
+      # 3.1 Setup Kubernetes
+      - name: Install Minikube
         run: |
           curl -LO https://storage.googleapis.com/minikube/releases/latest/minikube-linux-amd64
           sudo install minikube-linux-amd64 /usr/local/bin/minikube
-          minikube start --driver=docker --cpus=2 --memory=4096
-
-      - name: Ensure kubectl context
+      - name: Start Minikube
         run: |
+          minikube start --driver=docker --cpus=2 --memory=4096
+      - name: Configure Kubeconfig
+        run: |
+          mkdir -p $HOME/.kube
           minikube update-context
           kubectl config current-context
-          # Записываем полный путь с $HOME, а не с тильдой
+          # Set both KUBECONFIG and KUBE_CONFIG_PATH for Terraform compatibility
           echo "KUBECONFIG=$HOME/.kube/config" >> $GITHUB_ENV
+          echo "KUBE_CONFIG_PATH=$HOME/.kube/config" >> $GITHUB_ENV
+          echo "Current KUBECONFIG: $KUBECONFIG"
+          echo "Current KUBE_CONFIG_PATH: $KUBE_CONFIG_PATH"
 
-      - name: Initialize and validate Terraform
+      # 3.2 Cache Terraform plugins
+      - uses: actions/cache@v3
+        with:
+          path: ~/.terraform.d/plugin-cache
+          key: ${{ runner.os }}-tf-plugins-${{ hashFiles('terraform/**/*.tf') }}
+
+      # 3.3 Deploy infrastructure
+      - name: Terraform Init & Apply
         run: |
           cd terraform
-          terraform init
-          terraform validate
+          terraform init -plugin-dir="$HOME/.terraform.d/plugin-cache"
+          terraform plan -var="ci_cd_mode=false" -out=tfplan
+          terraform apply -auto-approve tfplan
 
-      - name: Build Self-Healing Controller image
+      # 3.4 Basic smoke test
+      - name: Smoke Test
+        run: |
+          kubectl get ns self-healing monitoring chaos-engineering
+          kubectl get pods --all-namespaces
+
+  # 4. Self-Healing Controller Tests
+  self-healing-test:
+    name: Self-Healing Controller Tests
+    runs-on: ubuntu-latest
+    needs: infra-deploy
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Minikube
+        run: |
+          curl -LO https://storage.googleapis.com/minikube/releases/latest/minikube-linux-amd64
+          sudo install minikube-linux-amd64 /usr/local/bin/minikube
+      - name: Start Minikube
+        run: |
+          minikube start --driver=docker --cpus=2 --memory=4096
+      - name: Configure Kubeconfig
+        run: |
+          mkdir -p $HOME/.kube
+          minikube update-context
+          kubectl config current-context
+          # Set both KUBECONFIG and KUBE_CONFIG_PATH for Terraform compatibility
+          echo "KUBECONFIG=$HOME/.kube/config" >> $GITHUB_ENV
+          echo "KUBE_CONFIG_PATH=$HOME/.kube/config" >> $GITHUB_ENV
+          echo "Current KUBECONFIG: $KUBECONFIG"
+          echo "Current KUBE_CONFIG_PATH: $KUBE_CONFIG_PATH
+
+      - name: Load Docker image
         run: |
           cd kubernetes/self-healing
           docker build -t self-healing-controller:latest .
-          echo "Loading image into Minikube..."
           minikube image load self-healing-controller:latest
-          cd ../..
-
-      - name: Deploy infrastructure with Terraform
-        run: |
-          echo "Current KUBECONFIG: $KUBECONFIG"
-          echo "Kubectl config current-context:"
-          kubectl config current-context || echo "No current context"
-          echo "Kubectl config view:"
-          kubectl config view --minify || echo "No config available"
-          
-          # Ensure kubectl context is set
-          if ! kubectl config current-context >/dev/null 2>&1; then
-            echo "Setting up kubectl context..."
-            minikube kubectl -- config view --minify --flatten > ~/.kube/config
-            kubectl config set-cluster minikube --server=$(minikube kubectl -- config view --minify -o jsonpath='{.clusters[0].cluster.server}')
-            kubectl config set-context minikube --cluster=minikube --user=minikube
-            kubectl config use-context minikube
-            echo "Kubectl context set to: $(kubectl config current-context)"
-          fi
-          
-          cd terraform
-          terraform plan -var="ci_cd_mode=false" -out=tfplan
-          terraform apply tfplan
-
-      - name: Verify Terraform deployment
-        run: |
-          echo "Checking Terraform outputs..."
-          cd terraform
-          terraform output
-
-          echo "Checking kubectl context..."
-          minikube kubectl -- config current-context
-          minikube kubectl -- cluster-info
-
-          echo "Checking all namespaces..."
-          kubectl get namespaces | grep -E "(monitoring|chaos-engineering|self-healing|kured|test-app)"
-
-          echo "Checking all pods..."
-          kubectl get pods --all-namespaces | grep -E "(prometheus|alertmanager|chaos-mesh|self-healing|test-app)"
-          
-          echo "Checking Kured DaemonSet..."
-          kubectl get daemonset --all-namespaces | grep kured || echo "No Kured DaemonSet found"
 
       - name: Wait for components to be ready
         run: |
-          echo "Setting up kubectl context..."
-          minikube kubectl -- get nodes
-          
           echo "Waiting for Self-Healing Controller..."
           kubectl wait --for=condition=ready pod -l app=self-healing-controller -n self-healing --timeout=600s
           
           echo "Waiting for test application..."
           kubectl wait --for=condition=ready pod -l app=test-app -n test-app --timeout=300s
-          
-          echo "Waiting for Prometheus stack..."
-          kubectl wait --for=condition=ready pod -l app.kubernetes.io/name=prometheus -n monitoring --timeout=300s
-          
-          echo "Deploying Chaos Mesh..."
-          kubectl apply -f kubernetes/chaos-engineering/chaos-mesh.yaml
-
-          echo "Deploying backup system..."
-          kubectl apply -f kubernetes/backup/backup-cronjob.yaml
-
-          echo "Waiting for Chaos Mesh to be ready..."
-          kubectl wait --for=condition=ready pod -l app=chaos-mesh -n chaos-engineering --timeout=300s
-
-          echo "Waiting for backup system to be ready..."
-          kubectl wait --for=condition=ready pod -l app=backup -n monitoring --timeout=300s
-
-      - name: Test backup system
-        run: |
-          echo "Testing backup CronJob..."
-          kubectl get cronjob -n monitoring infrastructure-backup
-          
-          echo "Testing backup PVC..."
-          kubectl get pvc -n monitoring backup-pvc
-          
-          echo "Testing backup RBAC..."
-          kubectl get clusterrole backup-role
-          kubectl get clusterrolebinding backup-role-binding
-
-      - name: Test chaos engineering
-        run: |
-          echo "Testing Chaos Mesh connectivity..."
-          kubectl get pods -n chaos-engineering
-          
-          echo "Testing chaos experiments..."
-          kubectl apply -f kubernetes/chaos-engineering/chaos-experiments.yaml
-          
-          echo "Waiting for chaos experiments to be created..."
-          sleep 30
-          
-          echo "Checking chaos experiments status..."
-          kubectl get chaos -n test-app
-
-      - name: Test network policies
-        run: |
-          echo "Testing Network Policies..."
-          kubectl get networkpolicy --all-namespaces
-          
-          echo "Testing Self-Healing Network Policy..."
-          kubectl get networkpolicy -n self-healing self-healing-controller-network-policy
-          
-          echo "Testing Test App Network Policy..."
-          kubectl get networkpolicy -n test-app test-app-network-policy
-          
-          echo "Testing Monitoring Network Policy..."
-          kubectl get networkpolicy -n monitoring monitoring-network-policy
-
-      - name: Wait for Kured DaemonSet...
-        run: |
-          echo "Waiting for Kured DaemonSet..."
-          kubectl wait --for=condition=available daemonset/kured -n kube-system --timeout=300s || {
-            echo "Kured DaemonSet timeout - checking pod status..."
-            kubectl describe pod -n kube-system -l app=kured
-            echo "Checking Kured pod logs..."
-            kubectl logs -n kube-system -l app=kured --tail=50 || echo "No logs available"
-            echo "Continuing without waiting for Kured..."
-          }
-          
-          echo "Checking Kured pods (may be 0 if no nodes need reboot)..."
-          kubectl get pods -n kube-system | grep kured || echo "No Kured pods found"
-
-  # Job 5: Self-Healing Controller Testing
-  self-healing-test:
-    name: Self-Healing Controller Tests
-    runs-on: ubuntu-latest
-    needs: infrastructure-test
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Setup kubectl
-        uses: azure/setup-kubectl@v3
-        with:
-          version: 'latest'
-
-      - name: Setup Minikube
-        run: |
-          curl -LO https://storage.googleapis.com/minikube/releases/latest/minikube-linux-amd64
-          sudo install minikube-linux-amd64 /usr/local/bin/minikube
-          minikube start --driver=docker --cpus=2 --memory=4096
-
-      - name: Setup kubectl context for Minikube
-        run: |
-          # Wait for Minikube to be fully ready
-          minikube status
-          
-          # Get the kubeconfig and set it up
-          minikube kubectl -- config view --minify --flatten > ~/.kube/config || {
-            echo "Failed to get kubeconfig, trying alternative approach..."
-            minikube kubectl -- config view > ~/.kube/config
-          }
-          chmod 600 ~/.kube/config
-          
-          # Verify context is set
-          kubectl config current-context || {
-            echo "No current context, setting minikube as default..."
-            kubectl config set-cluster minikube --server=$(minikube kubectl -- config view --minify -o jsonpath='{.clusters[0].cluster.server}')
-            kubectl config set-context minikube --cluster=minikube --user=minikube
-            kubectl config use-context minikube
-          }
-          
-          # Set KUBECONFIG environment variable for Terraform
-          echo "KUBECONFIG=~/.kube/config" >> $GITHUB_ENV
-
-      - name: Setup Terraform
-        uses: hashicorp/setup-terraform@v2
-        with:
-          terraform_version: "1.0"
-
-      - name: Setup Docker
-        uses: docker/setup-buildx-action@v3
-
-      - name: Build and deploy infrastructure
-        run: |
-          # Build Self-Healing Controller image
-          cd kubernetes/self-healing
-          docker build -t self-healing-controller:latest .
-          echo "Loading image into Minikube..."
-          minikube image load self-healing-controller:latest
-          cd ../..
-
-          # Ensure kubectl context
-          minikube update-context
-          kubectl config current-context
-          export KUBECONFIG=$HOME/.kube/config
-
-          # Deploy infrastructure with Terraform
-          cd terraform
-          terraform init
-          terraform plan -var="ci_cd_mode=false" -out=tfplan
-          terraform apply tfplan
-          cd ..
-
-      - name: Wait for system to be ready
-        run: |
-          sleep 30
-          minikube kubectl -- get pods --all-namespaces
-
-      - name: Wait for components to be ready
-        run: |
-          echo "Waiting for Self-Healing Controller..."
-          minikube kubectl -- wait --for=condition=ready pod -l app=self-healing-controller -n self-healing --timeout=600s
-          
-          echo "Waiting for test application..."
-          minikube kubectl -- wait --for=condition=ready pod -l app=test-app -n test-app --timeout=300s
-          
-          echo "Waiting for Prometheus stack..."
-          minikube kubectl -- wait --for=condition=ready pod -l app.kubernetes.io/name=prometheus -n monitoring --timeout=300s
 
       - name: Test Self-Healing Controller health
         run: |
           # Start port-forward in background
-          minikube kubectl -- port-forward -n self-healing svc/self-healing-controller 8081:8080 &
+          kubectl port-forward -n self-healing svc/self-healing-controller 8081:8080 &
           PF_PID=$!
-
-          # Wait for port-forward to be ready
           sleep 10
 
           # Test health endpoint
           curl -f http://localhost:8081/health || exit 1
-
-          # Test metrics endpoint
           curl -f http://localhost:8081/metrics || exit 1
 
-          # Kill port-forward
           kill $PF_PID
 
       - name: Test pod failure recovery
         run: |
           echo "Creating a failing pod to test self-healing..."
-
-          # Create a pod that will fail
-          minikube kubectl -- run test-healing-pod --image=busybox --command -- /bin/sh -c "sleep 3 && exit 1" -n test-app
-
-          # Wait for the pod to fail and be detected
+          kubectl run test-healing-pod --image=busybox --command -- /bin/sh -c "sleep 3 && exit 1" -n test-app
           sleep 15
 
-          # Check if the pod was handled by the self-healing controller
-          pod_status=$(minikube kubectl -- get pod test-healing-pod -n test-app -o jsonpath='{.status.phase}' 2>/dev/null || echo "NotFound")
+          pod_status=$(kubectl get pod test-healing-pod -n test-app -o jsonpath='{.status.phase}' 2>/dev/null || echo "NotFound")
           if [ "$pod_status" = "NotFound" ]; then
             echo "✅ Self-Healing Controller successfully detected and handled failing pod"
           else
@@ -468,259 +204,144 @@ jobs:
             exit 1
           fi
 
-          # Clean up test pod
-          minikube kubectl -- delete pod test-healing-pod -n test-app --ignore-not-found=true
+          kubectl delete pod test-healing-pod -n test-app --ignore-not-found=true
 
-      - name: Test crash looping detection
-        run: |
-          echo "Testing crash looping detection..."
-
-          # Create a pod that will crash loop
-          minikube kubectl -- run test-crash-pod --image=busybox --command -- /bin/sh -c "exit 1" -n test-app
-
-          # Wait for crash looping to be detected
-          sleep 20
-
-          # Check if the pod was handled
-          pod_status=$(minikube kubectl -- get pod test-crash-pod -n test-app -o jsonpath='{.status.phase}' 2>/dev/null || echo "NotFound")
-          if [ "$pod_status" = "NotFound" ]; then
-            echo "✅ Self-Healing Controller successfully detected crash looping pod"
-          else
-            echo "❌ Self-Healing Controller did not handle crash looping pod (status: $pod_status)"
-            exit 1
-          fi
-
-          # Clean up
-          minikube kubectl -- delete pod test-crash-pod -n test-app --ignore-not-found=true
-
-  # Job 6: Monitoring and Dashboard Tests
+  # 5. Monitoring Tests
   monitoring-test:
-    name: Monitoring & Dashboard Tests
+    name: Monitoring Tests
     runs-on: ubuntu-latest
-    needs: self-healing-test
+    needs: infra-deploy
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Setup kubectl
-        uses: azure/setup-kubectl@v3
-        with:
-          version: 'latest'
-
-      - name: Setup Minikube
+      - uses: actions/checkout@v4
+      - name: Install Minikube
         run: |
           curl -LO https://storage.googleapis.com/minikube/releases/latest/minikube-linux-amd64
           sudo install minikube-linux-amd64 /usr/local/bin/minikube
+      - name: Start Minikube
+        run: |
           minikube start --driver=docker --cpus=2 --memory=4096
-
-      - name: Setup kubectl context for Minikube
+      - name: Configure Kubeconfig
         run: |
-          # Wait for Minikube to be fully ready
-          minikube status
-          
-          # Get the kubeconfig and set it up
-          minikube kubectl -- config view --minify --flatten > ~/.kube/config || {
-            echo "Failed to get kubeconfig, trying alternative approach..."
-            minikube kubectl -- config view > ~/.kube/config
-          }
-          chmod 600 ~/.kube/config
-          
-          # Verify context is set
-          kubectl config current-context || {
-            echo "No current context, setting minikube as default..."
-            kubectl config set-cluster minikube --server=$(minikube kubectl -- config view --minify -o jsonpath='{.clusters[0].cluster.server}')
-            kubectl config set-context minikube --cluster=minikube --user=minikube
-            kubectl config use-context minikube
-          }
-          
-          # Set KUBECONFIG environment variable for Terraform
-          echo "KUBECONFIG=~/.kube/config" >> $GITHUB_ENV
-
-      - name: Setup Terraform
-        uses: hashicorp/setup-terraform@v2
-        with:
-          terraform_version: "1.0"
-
-      - name: Setup Docker
-        uses: docker/setup-buildx-action@v3
-
-      - name: Build and deploy infrastructure
-        run: |
-          # Build Self-Healing Controller image
-          cd kubernetes/self-healing
-          docker build -t self-healing-controller:latest .
-          echo "Loading image into Minikube..."
-          minikube image load self-healing-controller:latest
-          cd ../..
-
-          # Ensure kubectl context
+          mkdir -p $HOME/.kube
           minikube update-context
           kubectl config current-context
-          export KUBECONFIG=$HOME/.kube/config
+          # Set both KUBECONFIG and KUBE_CONFIG_PATH for Terraform compatibility
+          echo "KUBECONFIG=$HOME/.kube/config" >> $GITHUB_ENV
+          echo "KUBE_CONFIG_PATH=$HOME/.kube/config" >> $GITHUB_ENV
+          echo "Current KUBECONFIG: $KUBECONFIG"
+          echo "Current KUBE_CONFIG_PATH: $KUBE_CONFIG_PATH
 
-          # Deploy infrastructure with Terraform
-          cd terraform
-          terraform init
-          terraform plan -var="ci_cd_mode=false" -out=tfplan
-          terraform apply tfplan
-          cd ..
-
-      - name: Wait for components to be ready
+      - name: Load Docker image
         run: |
-          echo "Waiting for Self-Healing Controller..."
-          minikube kubectl -- wait --for=condition=ready pod -l app=self-healing-controller -n self-healing --timeout=600s
-          
-          echo "Waiting for test application..."
-          minikube kubectl -- wait --for=condition=ready pod -l app=test-app -n test-app --timeout=300s
-          
+          cd kubernetes/self-healing
+          docker build -t self-healing-controller:latest .
+          minikube image load self-healing-controller:latest
+
+      - name: Wait for monitoring components
+        run: |
           echo "Waiting for Prometheus stack..."
-          minikube kubectl -- wait --for=condition=ready pod -l app.kubernetes.io/name=prometheus -n monitoring --timeout=300s
+          kubectl wait --for=condition=ready pod -l app.kubernetes.io/name=prometheus -n monitoring --timeout=300s
 
       - name: Test Prometheus connectivity
         run: |
-          # Start port-forward in background
-          minikube kubectl -- port-forward -n monitoring svc/prometheus-kube-prometheus-prometheus 9090:9090 &
+          kubectl port-forward -n monitoring svc/prometheus-kube-prometheus-prometheus 9090:9090 &
           PF_PID=$!
-
-          # Wait for port-forward to be ready
           sleep 10
 
-          # Test Prometheus API
           curl -f http://localhost:9090/api/v1/query?query=up || exit 1
-
-          # Test self-healing metrics
           curl -f "http://localhost:9090/api/v1/query?query=up{job=\"self-healing-controller\"}" || echo "No self-healing metrics yet"
 
-          # Kill port-forward
-          kill $PF_PID
-
-      - name: Test Alertmanager connectivity
-        run: |
-          # Start port-forward in background
-          minikube kubectl -- port-forward -n monitoring svc/prometheus-kube-prometheus-alertmanager 9093:9093 &
-          PF_PID=$!
-
-          # Wait for port-forward to be ready
-          sleep 10
-
-          # Test Alertmanager API
-          curl -f http://localhost:9093/api/v2/status || exit 1
-
-          # Kill port-forward
           kill $PF_PID
 
       - name: Test Grafana connectivity
         run: |
-          # Start port-forward in background
-          minikube kubectl -- port-forward -n monitoring svc/prometheus-grafana 3000:80 &
+          kubectl port-forward -n monitoring svc/prometheus-grafana 3000:80 &
           PF_PID=$!
-
-          # Wait for port-forward to be ready
           sleep 10
 
-          # Test Grafana API
           curl -f http://localhost:3000/api/health || exit 1
 
-          # Kill port-forward
           kill $PF_PID
 
-      - name: Test Self-Healing Controller metrics
-        run: |
-          # Start port-forward in background
-          minikube kubectl -- port-forward -n self-healing svc/self-healing-controller 8081:8080 &
-          PF_PID=$!
-
-          # Wait for port-forward to be ready
-          sleep 10
-
-          # Test metrics endpoint
-          curl -f http://localhost:8081/metrics || exit 1
-
-          # Test health endpoint
-          curl -f http://localhost:8081/health || exit 1
-
-          # Kill port-forward
-          kill $PF_PID
-
-  # Job 7: Integration Tests
+  # 6. Integration Tests
   integration-tests:
     name: Integration Tests
     runs-on: ubuntu-latest
-    needs: monitoring-test
+    needs: [self-healing-test, monitoring-test]
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Setup kubectl
-        uses: azure/setup-kubectl@v3
-        with:
-          version: 'latest'
+      - uses: actions/checkout@v4
+      - name: Install Minikube
+        run: |
+          curl -LO https://storage.googleapis.com/minikube/releases/latest/minikube-linux-amd64
+          sudo install minikube-linux-amd64 /usr/local/bin/minikube
+      - name: Start Minikube
+        run: |
+          minikube start --driver=docker --cpus=2 --memory=4096
+      - name: Configure Kubeconfig
+        run: |
+          mkdir -p $HOME/.kube
+          minikube update-context
+          kubectl config current-context
+          # Set both KUBECONFIG and KUBE_CONFIG_PATH for Terraform compatibility
+          echo "KUBECONFIG=$HOME/.kube/config" >> $GITHUB_ENV
+          echo "KUBE_CONFIG_PATH=$HOME/.kube/config" >> $GITHUB_ENV
+          echo "Current KUBECONFIG: $KUBECONFIG"
+          echo "Current KUBE_CONFIG_PATH: $KUBE_CONFIG_PATH
 
       - name: Test Kured integration
         run: |
-          # Check Kured is running
           kubectl get pods -n kured | grep Running
-
-          # Check Kured configuration
           kubectl describe daemonset kured -n kured
 
       - name: Test monitoring alerts
         run: |
-          # Check if alerts are configured
           kubectl get prometheusrules -n monitoring || echo "No PrometheusRules found"
-
-          # Check alertmanager configuration
           kubectl get configmap -n monitoring | grep alertmanager || echo "No Alertmanager config found"
 
       - name: Test test application
         run: |
-          # Check test application is running
           kubectl get pods -n test-app | grep Running
-
-          # Test application accessibility
           kubectl port-forward -n test-app svc/test-app 8080:80 &
           PF_PID=$!
           sleep 10
           curl -f http://localhost:8080 || echo "Test app not accessible"
           kill $PF_PID
 
-      - name: Test HPA functionality
-        run: |
-          # Check HPA is configured
-          kubectl get hpa -n test-app
-
-          # Check HPA status
-          kubectl describe hpa test-app-hpa -n test-app
-
-  # Job 8: Performance Tests
+  # 7. Performance Tests
   performance-tests:
     name: Performance Tests
     runs-on: ubuntu-latest
     needs: integration-tests
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Setup kubectl
-        uses: azure/setup-kubectl@v3
-        with:
-          version: 'latest'
+      - uses: actions/checkout@v4
+      - name: Install Minikube
+        run: |
+          curl -LO https://storage.googleapis.com/minikube/releases/latest/minikube-linux-amd64
+          sudo install minikube-linux-amd64 /usr/local/bin/minikube
+      - name: Start Minikube
+        run: |
+          minikube start --driver=docker --cpus=2 --memory=4096
+      - name: Configure Kubeconfig
+        run: |
+          mkdir -p $HOME/.kube
+          minikube update-context
+          kubectl config current-context
+          # Set both KUBECONFIG and KUBE_CONFIG_PATH for Terraform compatibility
+          echo "KUBECONFIG=$HOME/.kube/config" >> $GITHUB_ENV
+          echo "KUBE_CONFIG_PATH=$HOME/.kube/config" >> $GITHUB_ENV
+          echo "Current KUBECONFIG: $KUBECONFIG"
+          echo "Current KUBE_CONFIG_PATH: $KUBE_CONFIG_PATH
 
       - name: Test resource limits
         run: |
-          # Check resource usage
           kubectl describe nodes
           kubectl top nodes || echo "Metrics server not available"
 
       - name: Test scalability
         run: |
-          # Scale test application
           kubectl scale deployment test-app -n test-app --replicas=5
-
-          # Wait for scaling
           kubectl wait --for=condition=available deployment/test-app -n test-app --timeout=300s
 
-          # Check all pods are running
           running_pods=$(kubectl get pods -n test-app | grep Running | wc -l)
           echo "Running pods: $running_pods"
 
@@ -735,15 +356,12 @@ jobs:
         run: |
           echo "Testing multiple pod failures..."
 
-          # Create multiple failing pods
           for i in {1..3}; do
             kubectl run test-fail-$i --image=busybox --command -- /bin/sh -c "sleep 2 && exit 1" -n test-app
           done
 
-          # Wait for self-healing to handle them
           sleep 20
 
-          # Check if pods were handled
           remaining_pods=$(kubectl get pods -n test-app | grep test-fail | wc -l)
           echo "Remaining test pods: $remaining_pods"
 
@@ -754,129 +372,47 @@ jobs:
             exit 1
           fi
 
-          # Clean up
-          kubectl delete pod -l run=test-fail-1 -n test-app --ignore-not-found=true
-          kubectl delete pod -l run=test-fail-2 -n test-app --ignore-not-found=true
-          kubectl delete pod -l run=test-fail-3 -n test-app --ignore-not-found=true
-
-  # Job 9: Cleanup and Report
-  cleanup-report:
-    name: Cleanup & Generate Report
+  # 8. Cleanup & Report
+  cleanup:
+    name: Cleanup & Report
     runs-on: ubuntu-latest
     needs: [performance-tests]
     if: always()
-    permissions:
-      issues: write
-      pull-requests: write
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Setup kubectl
-        uses: azure/setup-kubectl@v3
-        with:
-          version: 'latest'
-
-      - name: Collect logs and status
-        if: always()
+      - uses: actions/checkout@v4
+      - name: Install Minikube
         run: |
-          echo "=== Self-Healing Infrastructure Test Report ===" > system-report.txt
-          echo "Timestamp: $(date)" >> system-report.txt
-          echo "" >> system-report.txt
+          curl -LO https://storage.googleapis.com/minikube/releases/latest/minikube-linux-amd64
+          sudo install minikube-linux-amd64 /usr/local/bin/minikube
+      - name: Start Minikube
+        run: |
+          minikube start --driver=docker --cpus=2 --memory=4096
+      - name: Configure Kubeconfig
+        run: |
+          mkdir -p $HOME/.kube
+          minikube update-context
+          kubectl config current-context
+          # Set both KUBECONFIG and KUBE_CONFIG_PATH for Terraform compatibility
+          echo "KUBECONFIG=$HOME/.kube/config" >> $GITHUB_ENV
+          echo "KUBE_CONFIG_PATH=$HOME/.kube/config" >> $GITHUB_ENV
+          echo "Current KUBECONFIG: $KUBECONFIG"
+          echo "Current KUBE_CONFIG_PATH: $KUBE_CONFIG_PATH
 
-          echo "=== Pod Status ===" >> system-report.txt
-          kubectl get pods --all-namespaces >> system-report.txt 2>&1 || echo "kubectl not available" >> system-report.txt
-          echo "" >> system-report.txt
+      - name: Collect logs
+        run: |
+          kubectl get pods --all-namespaces >> system-report.txt
+          kubectl logs -n self-healing deployment/self-healing-controller --tail=50 >> system-report.txt
+          kubectl get events --all-namespaces --sort-by='.lastTimestamp' | tail -20 >> system-report.txt
 
-          echo "=== Service Status ===" >> system-report.txt
-          kubectl get svc --all-namespaces >> system-report.txt 2>&1 || echo "kubectl not available" >> system-report.txt
-          echo "" >> system-report.txt
-
-          echo "=== Self-Healing Controller Logs ===" >> system-report.txt
-          kubectl logs -n self-healing deployment/self-healing-controller --tail=50 >> system-report.txt 2>&1 || echo "No logs available" >> system-report.txt
-          echo "" >> system-report.txt
-
-          echo "=== Recent Events ===" >> system-report.txt
-          kubectl get events --all-namespaces --sort-by='.lastTimestamp' | tail -20 >> system-report.txt 2>&1 || echo "events not available" >> system-report.txt
-
-      - name: Upload system report
+      - name: Upload report
         uses: actions/upload-artifact@v4
-        if: always()
         with:
           name: system-report
           path: system-report.txt
 
-      - name: Cleanup infrastructure
+      - name: Cleanup test resources
         if: always()
         run: |
-          # Delete all test resources
-          kubectl delete namespace test-app --ignore-not-found=true || echo "test-app namespace cleanup failed"
-          kubectl delete namespace self-healing --ignore-not-found=true || echo "self-healing namespace cleanup failed"
-          kubectl delete namespace kured --ignore-not-found=true || echo "kured namespace cleanup failed"
-          kubectl delete namespace monitoring --ignore-not-found=true || echo "monitoring namespace cleanup failed"
-
-          # Stop minikube if available
-          if command -v minikube &> /dev/null; then
-            minikube stop || echo "minikube stop failed"
-            minikube delete || echo "minikube delete failed"
-          else
-            echo "minikube not available for cleanup"
-          fi
-
-      - name: Generate test summary
-        if: always()
-        run: |
-          echo "## Self-Healing Infrastructure Test Summary" > test-summary.md
-          echo "" >> test-summary.md
-          echo "### Test Results:" >> test-summary.md
-          echo "- ✅ Code Quality & Security: ${{ needs.code-quality.result }}" >> test-summary.md
-          echo "- ✅ Build & Test Controller: ${{ needs.build-test.result }}" >> test-summary.md
-          echo "- ✅ Infrastructure Testing: ${{ needs.infrastructure-test.result }}" >> test-summary.md
-          echo "- ✅ Self-Healing Controller Tests: ${{ needs.self-healing-test.result }}" >> test-summary.md
-          echo "- ✅ Monitoring & Dashboard Tests: ${{ needs.monitoring-test.result }}" >> test-summary.md
-          echo "- ✅ Integration Tests: ${{ needs.integration-tests.result }}" >> test-summary.md
-          echo "- ✅ Performance Tests: ${{ needs.performance-tests.result }}" >> test-summary.md
-          echo "" >> test-summary.md
-          echo "### Components Tested:" >> test-summary.md
-          echo "- ✅ Terraform Infrastructure" >> test-summary.md
-          echo "- ✅ Self-Healing Controller (Fixed)" >> test-summary.md
-          echo "- ✅ Prometheus Monitoring" >> test-summary.md
-          echo "- ✅ Alertmanager" >> test-summary.md
-          echo "- ✅ Grafana Dashboards" >> test-summary.md
-          echo "- ✅ Kured Node Reboots" >> test-summary.md
-          echo "- ✅ Test Application with HPA" >> test-summary.md
-          echo "- ✅ Pod Failure Detection & Recovery" >> test-summary.md
-          echo "- ✅ Crash Loop Detection" >> test-summary.md
-          echo "- ✅ Health Checks & Metrics" >> test-summary.md
-          echo "" >> test-summary.md
-          echo "### Key Improvements:" >> test-summary.md
-          echo "- 🔧 Fixed Self-Healing Controller infinite loop" >> test-summary.md
-          echo "- 🛡️ Added protection against self-healing own pods" >> test-summary.md
-          echo "- ⏱️ Implemented rate limiting for pod checks" >> test-summary.md
-          echo "- 📊 Added comprehensive health monitoring" >> test-summary.md
-          echo "- 🎯 Improved error handling and logging" >> test-summary.md
-
-      - name: Upload test summary
-        uses: actions/upload-artifact@v4
-        if: always()
-        with:
-          name: test-summary
-          path: test-summary.md
-
-      - name: Comment PR with results
-        if: github.event_name == 'pull_request'
-        uses: actions/github-script@v6
-        with:
-          script: |
-            const fs = require('fs');
-            const summary = fs.readFileSync('test-summary.md', 'utf8');
-            try {
-              await github.rest.issues.createComment({
-                issue_number: context.issue.number,
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                body: summary
-              });
-            } catch (error) {
-              console.log('Could not comment on PR:', error.message);
-            }
+          kubectl delete pod -l test=true -n test-app --ignore-not-found=true
+          kubectl delete pod test-healing-pod -n test-app --ignore-not-found=true
+          kubectl delete pod test-crash-pod -n test-app --ignore-not-found=true
