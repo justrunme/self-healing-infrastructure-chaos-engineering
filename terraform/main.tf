@@ -536,6 +536,14 @@ resource "kubernetes_deployment" "self_healing_controller" {
     }
   }
 
+  # Не ждём завершения rollout-а, чтобы Terraform не застревал
+  wait_for_rollout = false
+
+  # Завершаем create после 2 минут, если будет висеть
+  timeouts {
+    create = "2m"
+  }
+
   depends_on = [
     kubernetes_namespace.self_healing,
     kubernetes_service_account.self_healing_controller,
@@ -663,6 +671,14 @@ resource "kubernetes_deployment" "test_app" {
         }
       }
     }
+  }
+
+  # Не ждём завершения rollout-а, чтобы Terraform не застревал
+  wait_for_rollout = false
+
+  # Завершаем create после 2 минут, если будет висеть
+  timeouts {
+    create = "2m"
   }
 
   depends_on = [

@@ -168,7 +168,20 @@ jobs:
           terraform plan -var="ci_cd_mode=false" -out=tfplan
           terraform apply -auto-approve tfplan
 
-      # 3.4 Basic smoke test
+      # 3.6 Wait for deployments to be ready
+      - name: Wait for deployments to be ready
+        run: |
+          echo "Waiting for Self-Healing Controller to be ready..."
+          kubectl wait --namespace self-healing \
+            --for=condition=available deployment/self-healing-controller \
+            --timeout=120s
+          
+          echo "Waiting for test-app to be ready..."
+          kubectl wait --namespace test-app \
+            --for=condition=available deployment/test-app \
+            --timeout=120s
+
+      # 3.7 Basic smoke test
       - name: Smoke Test
         run: |
           kubectl get ns self-healing monitoring chaos-engineering
