@@ -1,290 +1,214 @@
-# Self-Healing Infrastructure Architecture
+# 🏗️ Architecture
 
-## Overview
+> **System design and component overview of the self-healing infrastructure**
 
-The Self-Healing Infrastructure is a comprehensive Kubernetes-based system that automatically detects and recovers from failures, with integrated monitoring, chaos engineering, and automated node reboots.
+---
 
-## Architecture Components
+## 🔧 Infrastructure Architecture
 
-### 1. Self-Healing Controller
-
-**Purpose**: Core component that monitors the cluster and performs automatic recovery actions.
-
-**Key Features**:
-- Pod failure detection and recovery
-- Crash loop detection and handling
-- Node failure monitoring
-- Helm release rollback management
-- Integration with Chaos Mesh
-- Slack notifications
-
-**Architecture**:
 ```
-┌─────────────────────────────────────────────────────────────┐
-│                    Self-Healing Controller                  │
-├─────────────────────────────────────────────────────────────┤
-│  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐         │
-│  │ Pod Monitor │  │Node Monitor │  │Health Server│         │
-│  └─────────────┘  └─────────────┘  └─────────────┘         │
-│         │                │                │                │
-│         └────────────────┼────────────────┘                │
-│                          │                                 │
-│  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐         │
-│  │ Recovery    │  │ Metrics     │  │ Slack       │         │
-│  │ Engine      │  │ Collector   │  │ Notifier    │         │
-│  └─────────────┘  └─────────────┘  └─────────────┘         │
-└─────────────────────────────────────────────────────────────┘
+┌─────────────────────────────────────────────────────────────────┐
+│                    Self-Healing Infrastructure                  │
+├─────────────────────────────────────────────────────────────────┤
+│  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐            │
+│  │   Test App  │  │ Self-Healing│  │  Monitoring │            │
+│  │   (Nginx)   │  │ Controller  │  │   Stack     │            │
+│  │             │  │             │  │             │            │
+│  │ • HPA       │  │ • Pod Watch │  │ • Prometheus│            │
+│  │ • Health    │  │ • Recovery  │  │ • Grafana   │            │
+│  │ • Scaling   │  │ • Metrics   │  │ • Alerts    │            │
+│  └─────────────┘  └─────────────┘  └─────────────┘            │
+│                                                                 │
+│  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐            │
+│  │    Kured    │  │    Chaos    │  │   Backup    │            │
+│  │             │  │  Engineering │  │   System    │            │
+│  │ • Node      │  │             │  │             │            │
+│  │   Reboots   │  │ • Chaos Mesh│  │ • Automated │            │
+│  │ • Security  │  │ • Pod Chaos │  │ • Retention │            │
+│  │   Updates   │  │ • Network   │  │ • Recovery  │            │
+│  └─────────────┘  └─────────────┘  └─────────────┘            │
+└─────────────────────────────────────────────────────────────────┘
 ```
 
-**Configuration**:
-- Environment-based configuration
-- Configurable thresholds and timeouts
-- Prometheus metrics integration
-- Slack webhook integration
+---
 
-### 2. Monitoring Stack
+## 🧩 Core Components
 
-**Components**:
-- **Prometheus**: Metrics collection and alerting
-- **Grafana**: Custom dashboards and visualization
-- **Alertmanager**: Alert routing and notification management
+### 📊 **Monitoring Stack**
+- **Prometheus**: Metrics collection and storage
+- **Grafana**: Visualization and dashboards
+- **Alertmanager**: Alert routing and notification
+- **Custom Rules**: Self-healing specific alerts
 
-**Architecture**:
-```
-┌─────────────────────────────────────────────────────────────┐
-│                    Monitoring Stack                        │
-├─────────────────────────────────────────────────────────────┤
-│  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐         │
-│  │ Prometheus  │  │  Grafana    │  │Alertmanager │         │
-│  │             │  │             │  │             │         │
-│  │ • Metrics   │  │ • Dashboards│  │ • Alerts    │         │
-│  │ • Rules     │  │ • Queries   │  │ • Routing   │         │
-│  │ • Scraping  │  │ • Viz       │  │ • Notify    │         │
-│  └─────────────┘  └─────────────┘  └─────────────┘         │
-└─────────────────────────────────────────────────────────────┘
-```
+### 🏥 **Self-Healing Controller**
+- **Pod Monitoring**: Continuous health checks
+- **Failure Detection**: Automatic issue identification
+- **Recovery Actions**: Pod restart and scaling
+- **Metrics Export**: Prometheus metrics endpoint
 
-**Custom Dashboards**:
-- Self-Healing Infrastructure Overview
-- Pod and Node Health Status
-- Chaos Engineering Experiments
-- Resource Usage Monitoring
-- Alert History
+### 🧪 **Test Application**
+- **Nginx Server**: Simple web application
+- **Health Checks**: Liveness and readiness probes
+- **HPA**: Horizontal Pod Autoscaler
+- **Load Testing**: Performance validation
 
-**Alert Rules**:
-- Pod failure detection
-- Node failure alerts
-- Resource usage warnings
-- Chaos experiment status
-- Security violations
-
-### 3. Chaos Engineering
-
-**Purpose**: Test system resilience and recovery mechanisms.
-
-**Components**:
+### 🌪️ **Chaos Engineering**
 - **Chaos Mesh**: Chaos engineering platform
-- **Chaos Experiments**: Predefined failure scenarios
-- **Integration**: Automatic experiment management
+- **Pod Chaos**: Controlled pod failures
+- **Network Chaos**: Network partition simulation
+- **Recovery Validation**: Automated testing
 
-**Architecture**:
+### 🔄 **Node Management**
+- **Kured**: Kubernetes Reboot Daemon
+- **Security Updates**: Automatic node reboots
+- **Health Monitoring**: Node status tracking
+- **Rolling Updates**: Zero-downtime updates
+
+---
+
+## 🔄 Data Flow
+
+### 1. **Monitoring Flow**
 ```
-┌─────────────────────────────────────────────────────────────┐
-│                  Chaos Engineering                         │
-├─────────────────────────────────────────────────────────────┤
-│  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐         │
-│  │ Chaos Mesh  │  │ Experiments │  │ Integration │         │
-│  │ Controller  │  │             │  │             │         │
-│  │             │  │ • Pod Chaos │  │ • Auto      │         │
-│  │ • Pod Chaos │  │ • Network   │  │   Recovery  │         │
-│  │ • Network   │  │ • CPU/Mem   │  │ • Monitoring│         │
-│  │ • CPU/Mem   │  │ • Container │  │ • Metrics   │         │
-│  └─────────────┘  └─────────────┘  └─────────────┘         │
-└─────────────────────────────────────────────────────────────┘
-```
-
-**Experiment Types**:
-- Pod failures and restarts
-- Network delays and packet loss
-- CPU and memory stress
-- Container kills
-- Node failures
-
-### 4. Infrastructure Components
-
-#### Kured (Kubernetes Reboot Daemon)
-- **Purpose**: Automatic node reboots for security updates
-- **Deployment**: DaemonSet on all nodes
-- **Integration**: Slack notifications for reboots
-
-#### Test Application
-- **Purpose**: Simulate real application workloads
-- **Components**: Nginx with Horizontal Pod Autoscaler
-- **Monitoring**: Health checks and metrics collection
-
-### 5. Security Architecture
-
-#### Network Policies
-```
-┌─────────────────────────────────────────────────────────────┐
-│                    Network Security                        │
-├─────────────────────────────────────────────────────────────┤
-│  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐         │
-│  │ Self-Healing│  │ Test App    │  │ Monitoring  │         │
-│  │ Network     │  │ Network     │  │ Network     │         │
-│  │ Policy      │  │ Policy      │  │ Policy      │         │
-│  └─────────────┘  └─────────────┘  └─────────────┘         │
-└─────────────────────────────────────────────────────────────┘
+Application → Prometheus → Grafana → Alertmanager → Slack
+     ↓              ↓         ↓           ↓         ↓
+  Metrics      Collection  Dashboard   Alerts   Notifications
 ```
 
-**Policy Rules**:
-- Isolated namespace communication
-- Restricted ingress/egress traffic
-- Service-specific port access
-- Inter-namespace communication control
-
-#### Security Contexts
-- **Non-root execution**: All containers run as non-root users
-- **Read-only filesystems**: Where possible
-- **Privilege escalation prevention**: Dropped capabilities
-- **Resource limits**: CPU and memory constraints
-
-### 6. Backup and Recovery
-
-#### Backup Strategy
+### 2. **Self-Healing Flow**
 ```
-┌─────────────────────────────────────────────────────────────┐
-│                    Backup System                           │
-├─────────────────────────────────────────────────────────────┤
-│  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐         │
-│  │ CronJob     │  │ Storage     │  │ Retention   │         │
-│  │ Scheduler   │  │ PVC         │  │ Policy      │         │
-│  │             │  │             │  │             │         │
-│  │ • Daily     │  │ • 10Gi      │  │ • 7 days    │         │
-│  │ • 2 AM      │  │ • Persistent│  │ • Cleanup   │         │
-│  └─────────────┘  └─────────────┘  └─────────────┘         │
-└─────────────────────────────────────────────────────────────┘
+Pod Failure → Controller → Detection → Recovery → Validation
+     ↓           ↓           ↓          ↓          ↓
+  Health     Monitoring   Analysis   Restart    Success
+  Check      Service      Logic      Action     Confirmation
 ```
 
-**Backup Components**:
-- Kubernetes resources (YAML manifests)
-- Prometheus data
-- Grafana dashboards
-- Terraform state
-- Configuration files
-
-**Recovery Process**:
-1. Restore Kubernetes resources
-2. Restore Prometheus data
-3. Restore Grafana dashboards
-4. Verify system health
-5. Run integration tests
-
-### 7. CI/CD Pipeline
-
-#### GitHub Actions Workflow
+### 3. **Chaos Engineering Flow**
 ```
-┌─────────────────────────────────────────────────────────────┐
-│                    CI/CD Pipeline                          │
-├─────────────────────────────────────────────────────────────┤
-│  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐         │
-│  │ Code Quality│  │ Build & Test│  │ Infrastructure│       │
-│  │             │  │             │  │             │         │
-│  │ • Linting   │  │ • Unit Tests│  │ • Terraform │         │
-│  │ • Security  │  │ • Coverage  │  │ • Deploy    │         │
-│  │ • Validation│  │ • Docker    │  │ • Test      │         │
-│  └─────────────┘  └─────────────┘  └─────────────┘         │
-└─────────────────────────────────────────────────────────────┘
+Chaos Mesh → Experiment → Failure → Recovery → Metrics
+     ↓          ↓          ↓         ↓         ↓
+  Dashboard   Execution   Pod Kill   Auto      Analysis
+  Interface   Engine      Network    Restart   Results
 ```
 
-**Pipeline Stages**:
-1. **Code Quality**: Linting, security scanning, validation
-2. **Build & Test**: Unit tests, coverage, Docker builds
-3. **Infrastructure**: Terraform deployment, integration tests
-4. **Performance**: Load testing, chaos engineering tests
+---
 
-### 8. Data Flow
+## 🏗️ Infrastructure Layers
 
-#### Monitoring Data Flow
-```
-┌─────────────┐    ┌─────────────┐    ┌─────────────┐
-│ Applications│───▶│ Prometheus  │───▶│   Grafana   │
-└─────────────┘    └─────────────┘    └─────────────┘
-       │                   │                   │
-       │                   ▼                   ▼
-       │            ┌─────────────┐    ┌─────────────┐
-       └───────────▶│Alertmanager │    │   Slack     │
-                    └─────────────┘    └─────────────┘
-```
+### **Layer 1: Infrastructure as Code**
+- **Terraform**: Cluster provisioning and management
+- **Kubernetes**: Container orchestration platform
+- **Minikube**: Local development environment
 
-#### Self-Healing Data Flow
-```
-┌─────────────┐    ┌─────────────┐    ┌─────────────┐
-│   Pods      │───▶│ Self-Healing│───▶│  Recovery   │
-│  Nodes      │    │ Controller  │    │   Actions   │
-└─────────────┘    └─────────────┘    └─────────────┘
-       ▲                   │                   │
-       │                   ▼                   ▼
-       │            ┌─────────────┐    ┌─────────────┐
-       └────────────│  Metrics    │    │   Slack     │
-                    └─────────────┘    └─────────────┘
-```
+### **Layer 2: Application Platform**
+- **Self-Healing Controller**: Custom recovery logic
+- **Monitoring Stack**: Observability and alerting
+- **Test Applications**: Validation workloads
 
-### 9. Scalability Considerations
+### **Layer 3: Operations & Testing**
+- **Chaos Engineering**: Resilience testing
+- **CI/CD Pipeline**: Automated deployment
+- **Node Management**: System maintenance
 
-#### Horizontal Scaling
-- **Self-Healing Controller**: Single instance (can be scaled if needed)
-- **Test Application**: Horizontal Pod Autoscaler
-- **Monitoring**: Prometheus and Grafana can be scaled
-- **Chaos Mesh**: Controller can handle multiple experiments
+---
 
-#### Resource Management
-- **Resource Limits**: All components have CPU/memory limits
-- **Resource Requests**: Guaranteed resources for critical components
-- **Storage**: Persistent volumes for data retention
-- **Network**: Bandwidth considerations for monitoring traffic
+## 🔐 Security Architecture
 
-### 10. Disaster Recovery
+### **Network Security**
+- **Namespace Isolation**: Separate network policies
+- **RBAC**: Role-based access control
+- **Service Mesh**: Secure inter-service communication
 
-#### Recovery Scenarios
-1. **Pod Failures**: Automatic restart and recovery
-2. **Node Failures**: Automatic node reboot via Kured
-3. **Service Failures**: Health checks and automatic recovery
-4. **Data Loss**: Backup restoration from persistent storage
-5. **Configuration Loss**: Git-based configuration management
-
-#### Recovery Time Objectives (RTO)
-- **Pod Recovery**: < 30 seconds
-- **Node Recovery**: < 5 minutes
-- **Service Recovery**: < 2 minutes
-- **Full System Recovery**: < 15 minutes
-
-### 11. Performance Characteristics
-
-#### Latency Requirements
-- **Health Check Response**: < 1 second
-- **Metrics Collection**: < 5 seconds
-- **Alert Generation**: < 10 seconds
-- **Pod Recovery**: < 30 seconds
-
-#### Throughput Requirements
-- **Concurrent Pod Monitoring**: 100+ pods
-- **Metrics Collection**: 1000+ metrics/second
-- **Alert Processing**: 100+ alerts/minute
-- **Chaos Experiments**: 10+ concurrent experiments
-
-### 12. Security Considerations
-
-#### Authentication & Authorization
-- **Service Accounts**: Kubernetes RBAC
-- **API Access**: Token-based authentication
-- **Network Access**: Network policies
+### **Application Security**
+- **Non-root Containers**: Security contexts
 - **Secret Management**: Kubernetes secrets
+- **Image Scanning**: Vulnerability detection
 
-#### Compliance
-- **Data Protection**: Encrypted storage
-- **Audit Logging**: Kubernetes audit logs
-- **Access Control**: Principle of least privilege
-- **Monitoring**: Security event monitoring
+### **Infrastructure Security**
+- **TLS Encryption**: Secure communication
+- **Audit Logging**: Security event tracking
+- **Access Control**: Kubernetes RBAC
 
-This architecture provides a robust, scalable, and secure foundation for self-healing infrastructure with comprehensive monitoring, chaos engineering, and automated recovery capabilities. 
+---
+
+## 📈 Scalability Design
+
+### **Horizontal Scaling**
+- **HPA**: Automatic pod scaling based on metrics
+- **Multi-replica Deployments**: High availability
+- **Load Balancing**: Service distribution
+
+### **Vertical Scaling**
+- **Resource Limits**: CPU and memory constraints
+- **Node Autoscaling**: Cluster capacity management
+- **Storage Scaling**: Persistent volume management
+
+### **Performance Optimization**
+- **Caching**: Application-level caching
+- **CDN**: Content delivery optimization
+- **Database Scaling**: Read replicas and sharding
+
+---
+
+## 🔄 High Availability
+
+### **Redundancy**
+- **Multi-replica Deployments**: Pod redundancy
+- **Multi-node Clusters**: Node redundancy
+- **Backup Systems**: Data redundancy
+
+### **Failover**
+- **Automatic Recovery**: Self-healing mechanisms
+- **Load Balancing**: Traffic distribution
+- **Health Checks**: Continuous monitoring
+
+### **Disaster Recovery**
+- **Backup Strategy**: Regular data backups
+- **Recovery Procedures**: Automated restoration
+- **Testing**: Regular DR validation
+
+---
+
+## 📊 Monitoring & Observability
+
+### **Metrics Collection**
+- **Application Metrics**: Custom business metrics
+- **Infrastructure Metrics**: System performance
+- **Kubernetes Metrics**: Cluster health
+
+### **Logging**
+- **Centralized Logging**: Aggregated log collection
+- **Structured Logging**: JSON format logs
+- **Log Retention**: Configurable retention policies
+
+### **Tracing**
+- **Distributed Tracing**: Request flow tracking
+- **Performance Analysis**: Bottleneck identification
+- **Error Tracking**: Issue correlation
+
+---
+
+## 🚀 Deployment Strategy
+
+### **Blue-Green Deployment**
+- **Zero Downtime**: Seamless application updates
+- **Rollback Capability**: Quick failure recovery
+- **Testing**: Production-like validation
+
+### **Canary Deployment**
+- **Gradual Rollout**: Risk mitigation
+- **Traffic Splitting**: Controlled exposure
+- **Monitoring**: Real-time performance tracking
+
+### **Rolling Updates**
+- **Incremental Updates**: Step-by-step deployment
+- **Health Checks**: Continuous validation
+- **Auto-rollback**: Failure detection and recovery
+
+---
+
+<div align="center">
+
+**[← Back to Index](./index.md)** | **[Components →](./components.md)**
+
+</div> 
