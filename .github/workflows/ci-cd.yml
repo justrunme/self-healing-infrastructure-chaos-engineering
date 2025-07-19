@@ -205,7 +205,8 @@ jobs:
         run: |
           minikube update-context
           kubectl config current-context
-          echo "KUBECONFIG=~/.kube/config" >> $GITHUB_ENV
+          # Записываем полный путь с $HOME, а не с тильдой
+          echo "KUBECONFIG=$HOME/.kube/config" >> $GITHUB_ENV
 
       - name: Initialize and validate Terraform
         run: |
@@ -405,7 +406,7 @@ jobs:
           # Ensure kubectl context
           minikube update-context
           kubectl config current-context
-          export KUBECONFIG=~/.kube/config
+          export KUBECONFIG=$HOME/.kube/config
 
           # Deploy infrastructure with Terraform
           cd terraform
@@ -555,7 +556,7 @@ jobs:
           # Ensure kubectl context
           minikube update-context
           kubectl config current-context
-          export KUBECONFIG=~/.kube/config
+          export KUBECONFIG=$HOME/.kube/config
 
           # Deploy infrastructure with Terraform
           cd terraform
