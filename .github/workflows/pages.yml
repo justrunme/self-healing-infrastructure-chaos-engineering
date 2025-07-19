@@ -24,10 +24,7 @@ on:
   release:
     types: [published]
 
-# Allow only one deployment at a time
-concurrency:
-  group: "pages"
-  cancel-in-progress: false
+# No concurrency at workflow level to avoid deadlocks
 
 jobs:
   # Validate documentation
@@ -257,9 +254,7 @@ jobs:
     permissions:
       pages: write
       id-token: write
-    concurrency:
-      group: "pages"
-      cancel-in-progress: false
+    # No concurrency to avoid deadlocks
     steps:
       - name: 📥 Checkout code
         uses: actions/checkout@v4
