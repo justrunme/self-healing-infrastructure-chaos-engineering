@@ -33,11 +33,8 @@ jobs:
       - name: 📦 Install dependencies
         run: |
           echo "📦 Installing MkDocs and dependencies..."
-          pip install mkdocs
-          pip install mkdocs-material
-          pip install mkdocs-git-revision-date-localized-plugin
-          pip install mkdocs-minify-plugin
-          pip install pymdown-extensions
+          pip install -r requirements.txt
+          echo "✅ Dependencies installed successfully"
 
       - name: 🔍 Validate documentation
         run: |
@@ -62,27 +59,14 @@ jobs:
       - name: 🏗️ Build site
         run: |
           echo "🏗️ Building MkDocs site..."
-          mkdocs build --clean
+          mkdocs build --clean --site-dir site
           echo "✅ Site built successfully"
 
-      - name: 📊 Generate sitemap
+      - name: 📊 Verify build output
         run: |
-          echo "📊 Generating sitemap..."
-          
-          # Create sitemap.xml
-          cat > site/sitemap.xml << 'SITEMAP'
-          <?xml version="1.0" encoding="UTF-8"?>
-          <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
-            <url>
-              <loc>https://justrunme.github.io/self-healing-infrastructure-chaos-engineering/\</loc\>
-              <lastmod>$(date -u +"%Y-%m-%dT%H:%M:%SZ")</lastmod>
-              <changefreq>daily</changefreq>
-              <priority>1.0</priority>
-            </url>
-          </urlset>
-          SITEMAP
-          
-          echo "✅ Sitemap generated"
+          echo "📊 Verifying build output..."
+          ls -la site/
+          echo "✅ Build verification complete"
 
       - name: 📦 Upload artifact
         uses: actions/upload-pages-artifact@v3
