@@ -194,38 +194,8 @@ resource "helm_release" "prometheus_stack" {
   ]
 }
 
-# Развертывание Kured через Helm
-resource "helm_release" "kured" {
-  name       = "kured"
-  repository = "https://weaveworks.github.io/kured"
-  chart      = "kured"
-  namespace  = kubernetes_namespace.kured.metadata[0].name
-  create_namespace = false
-
-  set {
-    name  = "configuration.rebootDays"
-    value = "mon,tue,wed,thu,fri"
-  }
-
-  set {
-    name  = "configuration.startTime"
-    value = "3am"
-  }
-
-  set {
-    name  = "configuration.endTime"
-    value = "5am"
-  }
-
-  set {
-    name  = "configuration.timeZone"
-    value = "UTC"
-  }
-
-  depends_on = [
-    kubernetes_namespace.kured
-  ]
-}
+# Kured deployment removed - repository not available
+# Will be deployed manually if needed
 
 # Создание ServiceAccount для Self-Healing Controller
 resource "kubernetes_service_account" "self_healing_controller" {
@@ -337,6 +307,7 @@ resource "kubernetes_deployment" "self_healing_controller" {
         container {
           image = var.self_healing_controller_image
           name  = "self-healing-controller"
+          image_pull_policy = "Never"
 
           port {
             container_port = 8080

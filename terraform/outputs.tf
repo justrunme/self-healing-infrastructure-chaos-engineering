@@ -35,7 +35,7 @@ output "prometheus_stack_name" {
 
 output "kured_release_name" {
   description = "Name of the Kured release"
-  value       = helm_release.kured.name
+  value       = "kured-disabled"
 }
 
 output "self_healing_controller_service" {
