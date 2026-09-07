@@ -8,6 +8,11 @@
 [![Kubernetes](https://img.shields.io/badge/kubernetes-1.24+-blue.svg)](https://kubernetes.io/)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 
+[![Case study](https://img.shields.io/badge/case-justrunme.com-111111)](https://justrunme.com/cases/self-healing-infrastructure/)
+
+Case study: [Self-Healing Infrastructure](https://justrunme.com/cases/self-healing-infrastructure/) · [Andrey Lesnikov](https://justrunme.com/)
+Related on site: [Incident Runbook Automation](https://justrunme.com/cases/incident-runbook-automation/)
+
 A comprehensive **Kubernetes-based self-healing infrastructure** that automatically detects and recovers from failures, with integrated monitoring, chaos engineering, and automated node management. Built with modern DevOps practices and robust testing.
 
 ## 🎯 What This Infrastructure Guarantees
