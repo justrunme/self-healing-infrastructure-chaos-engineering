@@ -11,7 +11,18 @@
 [![Case study](https://img.shields.io/badge/case-justrunme.com-111111)](https://justrunme.com/cases/self-healing-infrastructure/)
 
 Case study: [Self-Healing Infrastructure](https://justrunme.com/cases/self-healing-infrastructure/) · [Andrey Lesnikov](https://justrunme.com/)
-Related on site: [Incident Runbook Automation](https://justrunme.com/cases/incident-runbook-automation/)
+
+## On justrunme.com
+
+This repository is the public evidence base for:
+
+| Case | URL |
+| --- | --- |
+| **Self-Healing Infrastructure** (primary) | https://justrunme.com/cases/self-healing-infrastructure/ |
+| Incident Runbook Automation | https://justrunme.com/cases/incident-runbook-automation/ |
+
+Site: [justrunme.com](https://justrunme.com/) · Author: [Andrey Lesnikov](https://justrunme.com/about/)
+
 
 A comprehensive **Kubernetes-based self-healing infrastructure** that automatically detects and recovers from failures, with integrated monitoring, chaos engineering, and automated node management. Built with modern DevOps practices and robust testing.
 
