@@ -130,7 +130,7 @@ test-app          test-app-abc123-def456                1/1     Running   0     
 test-app          test-app-abc123-ghi789                1/1     Running   0          2m
 
 === Self-Healing Controller Logs ===
-2024-01-15 10:30:15 INFO Starting Self-Healing Controller v1.0.0
+2024-01-15 10:30:15 INFO Starting Self-Healing Controller v1.1.0
 2024-01-15 10:30:15 INFO Monitoring namespace: test-app
 2024-01-15 10:30:15 INFO Health check endpoint: /health
 2024-01-15 10:30:15 INFO Metrics endpoint: /metrics
@@ -664,7 +664,7 @@ The Self-Healing Controller is automatically built and published to GitHub Conta
 docker pull ghcr.io/justrunme/self-healing-infrastructure-chaos-engineering/self-healing-controller:latest
 
 # Pull a specific version
-docker pull ghcr.io/justrunme/self-healing-infrastructure-chaos-engineering/self-healing-controller:v1.0.0
+docker pull ghcr.io/justrunme/self-healing-infrastructure-chaos-engineering/self-healing-controller:v1.1.0
 ```
 
 ## 📈 Performance & Reliability Features
