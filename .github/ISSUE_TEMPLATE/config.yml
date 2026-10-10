@@ -1,0 +1,5 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Security
+    url: https://github.com/justrunme/self-healing-infrastructure-chaos-engineering/blob/main/SECURITY.md
+    about: Report security issues privately when a SECURITY.md contact is listed in the repo.
