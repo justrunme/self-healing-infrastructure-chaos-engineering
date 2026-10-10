@@ -10,6 +10,7 @@ Self-healing and chaos patterns for calmer incident response on Kubernetes.
 [![Terraform](https://img.shields.io/badge/terraform-1.0+-blue.svg)](https://www.terraform.io/)
 [![Kubernetes](https://img.shields.io/badge/kubernetes-1.24+-blue.svg)](https://kubernetes.io/)
 [![Case study](https://img.shields.io/badge/case-justrunme.com-111111)](https://justrunme.com/cases/self-healing-infrastructure/)
+[![OpenSSF Scorecard](https://api.securityscorecards.dev/projects/github.com/justrunme/self-healing-infrastructure-chaos-engineering/badge)](https://securityscorecards.dev/viewer/?uri=github.com/justrunme/self-healing-infrastructure-chaos-engineering)
 
 Case study: [Self-Healing Infrastructure](https://justrunme.com/cases/self-healing-infrastructure/) · [Andrey Lesnikov](https://justrunme.com/)
 
