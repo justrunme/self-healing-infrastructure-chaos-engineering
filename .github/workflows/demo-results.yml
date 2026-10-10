@@ -1,0 +1,44 @@
+name: Demo results
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "7 6 * * 1"
+
+jobs:
+  record-remediation:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install recorders
+        run: |
+          python -m pip install asciinema
+          npm install -g svg-term-cli
+      - name: Setup Minikube
+        uses: ./.github/actions/setup-minikube
+      - name: Build and load controller
+        run: |
+          cd kubernetes/self-healing
+          docker build -t self-healing-controller:latest .
+          minikube image load self-healing-controller:latest
+      - name: Deploy controller and test-app
+        run: |
+          minikube kubectl -- create namespace self-healing || true
+          minikube kubectl -- apply -f kubernetes/self-healing/slack-secret.yaml
+          minikube kubectl -- apply -f kubernetes/self-healing/deployment.yaml
+          minikube kubectl -- apply -f kubernetes/test-app/test-app.yaml
+          minikube kubectl -- rollout status deployment/self-healing-controller -n self-healing --timeout=120s
+          minikube kubectl -- rollout status deployment/test-app -n test-app --timeout=120s
+      - name: Record fault-inject remediation demo
+        run: |
+          mkdir -p docs/assets
+          asciinema rec --overwrite -c 'bash scripts/demo_remediation_record.sh' docs/assets/chaos-remediation.cast
+          svg-term --in docs/assets/chaos-remediation.cast --out docs/assets/chaos-remediation.svg --window --width 100 --height 20 --no-cursor
+          python3 scripts/write_demo_results.py
+      - uses: actions/upload-artifact@v4
+        with:
+          name: demo-results
+          path: |
+            docs/assets/chaos-remediation.cast
+            docs/assets/chaos-remediation.svg
+            docs/results.json

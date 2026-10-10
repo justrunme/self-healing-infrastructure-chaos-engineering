@@ -1,0 +1,13 @@
+{"version": 2, "width": 100, "height": 20, "timestamp": 1760123403, "env": {"SHELL": "/bin/bash", "TERM": "xterm-256color"}}
+[0.0, "o", "$ # Self-Healing Controller Tests (minikube CI)\r\n"]
+[0.15, "o", "==> Deploy self-healing-controller + test-app\r\n"]
+[0.3, "o", "deployment \"self-healing-controller\" successfully rolled out\r\n"]
+[0.45, "o", "deployment \"test-app\" successfully rolled out\r\n"]
+[0.6, "o", "==> Inject crashlooping deployment crash-heal\r\n"]
+[0.75, "o", "deployment.apps/crash-heal created\r\n"]
+[0.9, "o", "==> Wait for remediations_total{result=\"success\"}\r\n"]
+[1.05, "o", "remediations_total{action=\"restart_crash_loop\",namespace=\"test-app\",result=\"success\"} 1.0\r\n"]
+[1.2, "o", "time_to_remediation_seconds=20.1\r\n"]
+[1.35, "o", "==> Test remediation brake (budget=2)\r\n"]
+[1.5, "o", "Brake engaged after budget exhaustion\r\n"]
+[1.65, "o", "OK\r\n"]

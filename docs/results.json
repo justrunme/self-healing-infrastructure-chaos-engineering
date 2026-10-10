@@ -1,0 +1,14 @@
+{
+  "repo": "self-healing-infrastructure-chaos-engineering",
+  "source_run": "https://github.com/justrunme/self-healing-infrastructure-chaos-engineering/actions/runs/38062111574",
+  "source_job": "Self-Healing Controller Tests",
+  "measured_at": "2026-10-10T15:10:03Z",
+  "metrics": {
+    "time_to_remediation_seconds": 20.1,
+    "remediation_action": "restart_crash_loop",
+    "remediation_result": "success",
+    "brake_engaged": true,
+    "brake_reason": "budget_exhausted",
+    "remediation_budget_per_namespace": 2
+  }
+}

@@ -10,6 +10,7 @@ Self-healing and chaos patterns for calmer incident response on Kubernetes.
 [![Terraform](https://img.shields.io/badge/terraform-1.0+-blue.svg)](https://www.terraform.io/)
 [![Kubernetes](https://img.shields.io/badge/kubernetes-1.24+-blue.svg)](https://kubernetes.io/)
 [![Case study](https://img.shields.io/badge/case-justrunme.com-111111)](https://justrunme.com/cases/self-healing-infrastructure/)
+[![OpenSSF Scorecard](https://api.securityscorecards.dev/projects/github.com/justrunme/self-healing-infrastructure-chaos-engineering/badge)](https://securityscorecards.dev/viewer/?uri=github.com/justrunme/self-healing-infrastructure-chaos-engineering)
 
 Case study: [Self-Healing Infrastructure](https://justrunme.com/cases/self-healing-infrastructure/) · [Andrey Lesnikov](https://justrunme.com/)
 
@@ -819,6 +820,30 @@ spec:
 3. Commit your changes (`git commit -m 'Add amazing feature'`)
 4. Push to the branch (`git push origin feature/amazing-feature`)
 5. Open a Pull Request
+
+## Demo
+
+Fault inject → detect → remediate on the self-healing controller (minikube CI path):
+
+```bash
+# See CI job "Self-Healing Controller Tests" or:
+bash scripts/demo_remediation_record.sh
+```
+
+<p align="center">
+  <img src="docs/assets/chaos-remediation.svg" alt="Self-healing remediation demo: crash-heal inject to remediations_total success" width="100%" />
+</p>
+
+## Results
+
+Measured from CI (not estimates). Details: [docs/results.md](docs/results.md) · [docs/results.json](docs/results.json).
+
+| Metric | Value | Source |
+| --- | ---: | --- |
+| Time to remediation (crashloop inject → success metric) | **20.1 s** | [38062111574](https://github.com/justrunme/self-healing-infrastructure-chaos-engineering/actions/runs/38062111574) (Self-Healing Controller Tests) |
+| Remediation action | `restart_crash_loop` | same run |
+| Brake after budget exhaustion | engaged (`budget_exhausted`) | same run |
+
 
 ## 📄 License
 
