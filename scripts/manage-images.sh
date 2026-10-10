@@ -192,9 +192,9 @@ Commands:
     help                     Show this help message
 
 Examples:
-    $0 build v1.0.0
-    $0 release v1.0.0
-    $0 update-terraform v1.0.0
+    $0 build v1.1.0
+    $0 release v1.1.0
+    $0 update-terraform v1.1.0
     $0 cleanup 3
 
 Environment Variables:

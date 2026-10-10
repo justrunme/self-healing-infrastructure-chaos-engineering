@@ -25,7 +25,7 @@ A clear and concise description of what actually happened.
  - OS: [e.g. macOS, Ubuntu]
  - Kubernetes Version: [e.g. 1.25.0]
  - Minikube Version: [e.g. 1.28.0]
- - Self-Healing Controller Version: [e.g. 1.0.0]
+ - Self-Healing Controller Version: [e.g. 1.1.0]
 
 **Logs**
 Please include relevant logs from:
