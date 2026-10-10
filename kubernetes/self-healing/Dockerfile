@@ -1,6 +1,6 @@
 # Multi-stage build for Self-Healing Controller
 # Stage 1: Build stage
-FROM python:3.9-slim as builder
+FROM python:3.12-slim as builder
 
 # Set working directory
 WORKDIR /app
@@ -18,7 +18,7 @@ COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
 # Stage 2: Runtime stage
-FROM python:3.9-slim as runtime
+FROM python:3.12-slim as runtime
 
 # Create non-root user
 RUN groupadd -r appuser && useradd -r -g appuser appuser
@@ -27,7 +27,7 @@ RUN groupadd -r appuser && useradd -r -g appuser appuser
 WORKDIR /app
 
 # Copy Python packages from builder stage
-COPY --from=builder /usr/local/lib/python3.9/site-packages /usr/local/lib/python3.9/site-packages
+COPY --from=builder /usr/local/lib/python3.12/site-packages /usr/local/lib/python3.12/site-packages
 COPY --from=builder /usr/local/bin /usr/local/bin
 
 # Copy application code
