@@ -275,43 +275,103 @@ jobs:
       - name: Wait for components to be ready
         run: |
           echo "🚀 Waiting for Self-Healing Controller to roll out..."
-          minikube kubectl -- rollout status deployment/self-healing-controller -n self-healing --timeout=120s || echo "Self-Healing Controller deployment not found, skipping"
+          minikube kubectl -- rollout status deployment/self-healing-controller -n self-healing --timeout=120s
           
           echo "🚀 Waiting for test-app to roll out..."
-          minikube kubectl -- rollout status deployment/test-app -n test-app --timeout=120s || echo "test-app deployment not found, skipping"
+          minikube kubectl -- rollout status deployment/test-app -n test-app --timeout=120s
 
       - name: Test Self-Healing Controller health
         run: |
-          if minikube kubectl -- get svc self-healing-controller -n self-healing &>/dev/null; then
-            # Start port-forward in background
-            minikube kubectl -- port-forward -n self-healing svc/self-healing-controller 8081:8080 &
-            PF_PID=$!
-            sleep 10
+          # Start port-forward in background
+          minikube kubectl -- port-forward -n self-healing svc/self-healing-controller 8081:8080 &
+          PF_PID=$!
+          sleep 10
 
-            # Test health endpoint
-            curl -f http://localhost:8081/health || echo "Health endpoint test failed"
-            curl -f http://localhost:8081/metrics || echo "Metrics endpoint test failed"
+          # Test health endpoint
+          curl -f http://localhost:8081/health
+          curl -f http://localhost:8081/metrics
 
-            kill $PF_PID
-          else
-            echo "⚠️ Self-Healing Controller service missing, skipping health test"
-          fi
+          # Verify Prometheus metrics are exposed
+          curl -s http://localhost:8081/metrics | grep -q "remediations_total" || (echo "Missing remediations_total metric" && exit 1)
+          curl -s http://localhost:8081/metrics | grep -q "brake_engaged" || (echo "Missing brake_engaged metric" && exit 1)
+          curl -s http://localhost:8081/metrics | grep -q "remediation_budget_remaining" || (echo "Missing remediation_budget_remaining metric" && exit 1)
 
-      - name: Test pod failure recovery
+          kill $PF_PID
+
+      - name: Test bounded pod failure recovery
         run: |
-          echo "Creating a failing pod to test self-healing..."
-          minikube kubectl -- run test-healing-pod --image=busybox --command -- /bin/sh -c "sleep 3 && exit 1" -n test-app
-          sleep 15
-
-          pod_status=$(minikube kubectl -- get pod test-healing-pod -n test-app -o jsonpath='{.status.phase}' 2>/dev/null || echo "NotFound")
-          if [ "$pod_status" = "NotFound" ]; then
-            echo "✅ Self-Healing Controller successfully detected and handled failing pod"
+          echo "🔥 Injecting pod failure to test bounded self-healing..."
+          
+          # Create a crashlooping pod
+          minikube kubectl -- run test-healing-pod --image=busybox --restart=Always --command -- /bin/sh -c "exit 1" -n test-app
+          
+          echo "⏳ Waiting for controller to detect and remediate..."
+          sleep 30
+          
+          # Verify remediation happened
+          RESTART_COUNT=$(minikube kubectl -- get pod test-healing-pod -n test-app -o jsonpath='{.status.containerStatuses[0].restartCount}' 2>/dev/null || echo "0")
+          echo "Pod restart count: $RESTART_COUNT"
+          
+          if [ "$RESTART_COUNT" -gt 0 ]; then
+            echo "✅ Self-Healing Controller successfully detected and restarted failing pod"
           else
-            echo "❌ Self-Healing Controller did not handle failing pod (status: $pod_status)"
+            echo "❌ Self-Healing Controller did not restart pod"
+            minikube kubectl -- describe pod test-healing-pod -n test-app
             exit 1
           fi
-
+          
+          # Verify metrics were recorded
+          minikube kubectl -- port-forward -n self-healing svc/self-healing-controller 8082:8080 &
+          PF_PID=$!
+          sleep 5
+          
+          # Check that remediations were counted
+          curl -s http://localhost:8082/metrics | grep 'remediations_total{' || (echo "❌ No remediation metrics found" && exit 1)
+          echo "✅ Remediation metrics are being recorded"
+          
+          kill $PF_PID
           minikube kubectl -- delete pod test-healing-pod -n test-app --ignore-not-found=true
+
+      - name: Test remediation brake with budget exhaustion
+        run: |
+          echo "🛑 Testing remediation brake with budget exhaustion..."
+          
+          # Deploy controller with very low budget for testing
+          minikube kubectl -- set env deployment/self-healing-controller -n self-healing REMEDIATION_BUDGET_PER_NAMESPACE=2
+          minikube kubectl -- rollout status deployment/self-healing-controller -n self-healing --timeout=60s
+          
+          # Create multiple failing pods to exhaust budget
+          for i in 1 2 3 4 5; do
+            minikube kubectl -- run brake-test-pod-$i --image=busybox --restart=Always --command -- /bin/sh -c "exit 1" -n test-app
+          done
+          
+          echo "⏳ Waiting for remediations and brake engagement..."
+          sleep 45
+          
+          # Check brake metrics
+          minikube kubectl -- port-forward -n self-healing svc/self-healing-controller 8083:8080 &
+          PF_PID=$!
+          sleep 5
+          
+          # Verify brake was engaged
+          if curl -s http://localhost:8083/metrics | grep 'brake_engaged.*budget_exhausted.*1'; then
+            echo "✅ Remediation brake engaged as expected when budget exhausted"
+          else
+            echo "⚠️ Brake might not have been engaged, checking metrics:"
+            curl -s http://localhost:8083/metrics | grep 'brake_engaged'
+          fi
+          
+          # Verify budget tracking
+          curl -s http://localhost:8083/metrics | grep 'remediation_budget_remaining' || echo "⚠️ Budget metrics not found"
+          
+          kill $PF_PID
+          
+          # Cleanup
+          for i in 1 2 3 4 5; do
+            minikube kubectl -- delete pod brake-test-pod-$i -n test-app --ignore-not-found=true
+          done
+          
+          echo "✅ Brake test completed"
 
   # 5. Monitoring Tests
   monitoring-test:

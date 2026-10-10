@@ -35,6 +35,14 @@ A comprehensive **Kubernetes-based self-healing infrastructure** that automatica
 - **Resource Optimization**: Horizontal Pod Autoscaler (HPA) for dynamic scaling
 - **High Availability**: Multi-replica deployments with health checks
 
+### 🛑 **Bounded Remediation (Human Brake)**
+- **Per-Namespace Budget**: Configurable remediation limit within sliding time window
+- **Per-Object Cooldown**: Prevents rapid-fire remediation of the same resource
+- **DRY_RUN Mode**: Test remediation logic without making actual changes
+- **Approval Gates**: Dangerous actions (node reboot/drain) require explicit annotation approval
+- **Prometheus Metrics**: Track remediation actions, brake engagement, and budget consumption
+- **Fail-Safe Design**: Automatically stops remediation when limits are exceeded to prevent cascading failures
+
 ### ✅ **Monitoring & Observability**
 - **Real-time Metrics**: Prometheus-based monitoring with custom dashboards
 - **Alert Management**: Intelligent alerting with Slack integration
@@ -350,6 +358,102 @@ kubectl logs -n monitoring deployment/prometheus-kube-prometheus-prometheus
 kubectl describe pod -n self-healing -l app=self-healing-controller
 kubectl describe svc -n monitoring prometheus-grafana
 ```
+
+## 🛑 Bounded Remediation Configuration
+
+The self-healing controller includes a sophisticated "human brake" system to prevent runaway remediation and cascading failures.
+
+### Environment Variables
+
+Configure the remediation brake using these environment variables:
+
+```bash
+# Per-namespace remediation budget
+REMEDIATION_BUDGET_PER_NAMESPACE=10  # Max remediations per namespace in window
+
+# Sliding time window (seconds)
+REMEDIATION_BUDGET_WINDOW_SECONDS=300  # 5 minutes
+
+# Per-object cooldown (seconds)
+REMEDIATION_COOLDOWN_SECONDS=60  # Wait 60s before remediating same object again
+
+# Dry-run mode (test without making changes)
+DRY_RUN=false  # Set to 'true' for testing
+
+# Require approval for dangerous actions
+REQUIRE_APPROVAL_FOR_DANGEROUS=true  # Node reboot/drain needs approval
+```
+
+### Example Deployment with Brake Configuration
+
+```yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: self-healing-controller
+  namespace: self-healing
+spec:
+  template:
+    spec:
+      containers:
+      - name: controller
+        image: self-healing-controller:latest
+        env:
+        - name: REMEDIATION_BUDGET_PER_NAMESPACE
+          value: "10"
+        - name: REMEDIATION_BUDGET_WINDOW_SECONDS
+          value: "300"
+        - name: REMEDIATION_COOLDOWN_SECONDS
+          value: "60"
+        - name: DRY_RUN
+          value: "false"
+        - name: REQUIRE_APPROVAL_FOR_DANGEROUS
+          value: "true"
+```
+
+### Approval Gates for Dangerous Actions
+
+For node reboots or drains, annotate the node to grant approval:
+
+```bash
+# Approve node reboot
+kubectl annotate node <node-name> self-healing.justrunme.com/approve-reboot=true
+
+# Approve node drain
+kubectl annotate node <node-name> self-healing.justrunme.com/approve-drain=true
+```
+
+### Monitoring Brake Metrics
+
+The controller exposes Prometheus metrics at `/metrics`:
+
+- `remediations_total{namespace, action, result}` - Total remediation actions
+- `brake_engaged{namespace, reason}` - Whether brake is engaged (1=engaged, 0=not engaged)
+- `remediation_budget_remaining{namespace}` - Remaining budget for namespace
+
+Query examples:
+
+```promql
+# Total remediations by namespace
+sum(remediations_total) by (namespace)
+
+# Budget exhaustion events
+brake_engaged{reason="budget_exhausted"} == 1
+
+# Remaining budget across namespaces
+remediation_budget_remaining
+```
+
+### DRY_RUN Mode
+
+Test remediation logic without making actual changes:
+
+```bash
+# Enable dry-run mode
+kubectl set env deployment/self-healing-controller -n self-healing DRY_RUN=true
+
+# Check logs to see what would happen
+kubectl logs -n self-healing -f deployment/self-healing-controller | grep "DRY RUN"
 ```
 
 ## 💼 Business Value & ROI
