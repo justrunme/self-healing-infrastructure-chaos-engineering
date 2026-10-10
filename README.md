@@ -2,9 +2,14 @@
 
 Self-healing and chaos patterns for calmer incident response on Kubernetes.
 
-[![CI](https://github.com/justrunme/self-healing-infrastructure-chaos-engineering/actions/workflows/ci-cd.yml/badge.svg)](https://github.com/justrunme/self-healing-infrastructure-chaos-engineering/actions/workflows/ci-cd.yml)
-[![Release](https://img.shields.io/github/v/release/justrunme/self-healing-infrastructure-chaos-engineering?display_name=tag)](https://github.com/justrunme/self-healing-infrastructure-chaos-engineering/releases/latest)
-[![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+[![CI/CD Pipeline](https://github.com/justrunme/self-healing-infrastructure-chaos-engineering/workflows/Self-Healing%20Infrastructure%20CI%2FCD/badge.svg)](https://github.com/justrunme/self-healing-infrastructure-chaos-engineering/actions/workflows/ci-cd.yml)
+[![Release](https://github.com/justrunme/self-healing-infrastructure-chaos-engineering/workflows/Release/badge.svg)](https://github.com/justrunme/self-healing-infrastructure-chaos-engineering/actions/workflows/release.yml)
+[![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
+[![GitHub Pages](https://img.shields.io/badge/GitHub_Pages-Live_Documentation-blue?style=for-the-badge)](https://justrunme.github.io/self-healing-infrastructure-chaos-engineering/)
+[![Docker Image](https://img.shields.io/badge/docker-latest-blue.svg)](https://github.com/justrunme/self-healing-infrastructure-chaos-engineering/packages)
+[![Terraform](https://img.shields.io/badge/terraform-1.0+-blue.svg)](https://www.terraform.io/)
+[![Kubernetes](https://img.shields.io/badge/kubernetes-1.24+-blue.svg)](https://kubernetes.io/)
+[![Case study](https://img.shields.io/badge/case-justrunme.com-111111)](https://justrunme.com/cases/self-healing-infrastructure/)
 
 Case study: [Self-Healing Infrastructure](https://justrunme.com/cases/self-healing-infrastructure/) · [Andrey Lesnikov](https://justrunme.com/)
 
@@ -836,3 +841,4 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 [![GitHub issues](https://img.shields.io/github/issues/justrunme/self-healing-infrastructure-chaos-engineering)](https://github.com/justrunme/self-healing-infrastructure-chaos-engineering/issues)
 
 </div>
+
