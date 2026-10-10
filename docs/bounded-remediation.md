@@ -452,7 +452,7 @@ class ObjectCooldown:
 
 ## Related Documentation
 
-- [Self-Healing Controller](self-healing.md)
-- [Monitoring Setup](monitoring.md)
-- [Chaos Engineering](chaos-engineering.md)
-- [CI/CD Pipeline](ci-cd.md)
+- [Self-Healing Controller](self-healing/controller.md)
+- [Monitoring Setup](monitoring/prometheus.md)
+- [Chaos Engineering](chaos-engineering/overview.md)
+- [CI/CD Pipeline](ci-cd/overview.md)

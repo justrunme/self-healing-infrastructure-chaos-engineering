@@ -262,15 +262,14 @@ jobs:
           docker build -t self-healing-controller:latest .
           minikube image load self-healing-controller:latest
 
-      # Ensure self-healing namespace exists
-      - name: Ensure self-healing namespace exists
+      # Deploy self-healing controller
+      - name: Deploy self-healing controller
         run: |
-          if ! minikube kubectl -- get namespace self-healing &>/dev/null; then
-            echo "⚠️ Namespace 'self-healing' not found—creating it for tests"
-            minikube kubectl -- create namespace self-healing
-          else
-            echo "✅ Namespace 'self-healing' exists"
-          fi
+          echo "📦 Deploying self-healing controller..."
+          minikube kubectl -- apply -f kubernetes/self-healing/deployment.yaml
+          
+          echo "📦 Deploying test-app..."
+          minikube kubectl -- apply -f kubernetes/test-app/test-app.yaml
 
       - name: Wait for components to be ready
         run: |
