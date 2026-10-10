@@ -1,16 +1,32 @@
-# 🚀 Self-Healing Infrastructure with Chaos Engineering
+# Self-Healing Infrastructure with Chaos Engineering
 
-[![GitHub Pages](https://img.shields.io/badge/GitHub_Pages-Live_Documentation-blue?style=for-the-badge)](https://justrunme.github.io/self-healing-infrastructure-chaos-engineering/)
-[![CI/CD Pipeline](https://github.com/justrunme/self-healing-infrastructure-chaos-engineering/workflows/Self-Healing%20Infrastructure%20CI%2FCD/badge.svg)](https://github.com/justrunme/self-healing-infrastructure-chaos-engineering/actions/workflows/ci-cd.yml)
-[![Release](https://github.com/justrunme/self-healing-infrastructure-chaos-engineering/workflows/Release/badge.svg)](https://github.com/justrunme/self-healing-infrastructure-chaos-engineering/actions/workflows/release.yml)
-[![Docker Image](https://img.shields.io/badge/docker-latest-blue.svg)](https://github.com/justrunme/self-healing-infrastructure-chaos-engineering/packages)
-[![Terraform](https://img.shields.io/badge/terraform-1.0+-blue.svg)](https://www.terraform.io/)
-[![Kubernetes](https://img.shields.io/badge/kubernetes-1.24+-blue.svg)](https://kubernetes.io/)
-[![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
+Self-healing and chaos patterns for calmer incident response on Kubernetes.
 
-[![Case study](https://img.shields.io/badge/case-justrunme.com-111111)](https://justrunme.com/cases/self-healing-infrastructure/)
+[![CI](https://github.com/justrunme/self-healing-infrastructure-chaos-engineering/actions/workflows/ci-cd.yml/badge.svg)](https://github.com/justrunme/self-healing-infrastructure-chaos-engineering/actions/workflows/ci-cd.yml)
+[![Release](https://img.shields.io/github/v/release/justrunme/self-healing-infrastructure-chaos-engineering?display_name=tag)](https://github.com/justrunme/self-healing-infrastructure-chaos-engineering/releases/latest)
+[![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
 Case study: [Self-Healing Infrastructure](https://justrunme.com/cases/self-healing-infrastructure/) · [Andrey Lesnikov](https://justrunme.com/)
+
+## What it does
+
+- Runs a self-healing controller with bounded remediation (namespace budgets, cooldowns, DRY_RUN)
+- Integrates Prometheus/Grafana monitoring, Kured node reboot, and Chaos Mesh experiments
+- Validates the stack through a multi-stage GitHub Actions CI/CD pipeline
+
+## Why
+
+- Automatic recovery without human brakes can cascade; budgets and approval gates keep remediation safe
+- Chaos drills should prove that the same controls still hold under failure
+
+## Quickstart
+
+```bash
+./scripts/deploy-terraform.sh
+# or: ./scripts/deploy.sh
+./scripts/test-self-healing.sh
+./scripts/test-chaos.sh
+```
 
 ## On justrunme.com
 
@@ -22,7 +38,6 @@ This repository is the public evidence base for:
 | Incident Runbook Automation | https://justrunme.com/cases/incident-runbook-automation/ |
 
 Site: [justrunme.com](https://justrunme.com/) · Author: [Andrey Lesnikov](https://justrunme.com/about/)
-
 
 A comprehensive **Kubernetes-based self-healing infrastructure** that automatically detects and recovers from failures, with integrated monitoring, chaos engineering, and automated node management. Built with modern DevOps practices and robust testing.
 
