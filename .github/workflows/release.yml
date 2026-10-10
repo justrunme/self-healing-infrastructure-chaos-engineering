@@ -122,7 +122,7 @@ jobs:
           push-to-registry: true
 
       - name: Sign container image
-        run: cosign sign --yes "${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}@${{ steps.build.outputs.digest }}"
+        run: cosign sign --yes --registry-referrers-mode=legacy "${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}@${{ steps.build.outputs.digest }}"
 
       - name: Verify signed image
         run: |
