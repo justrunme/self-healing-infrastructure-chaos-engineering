@@ -820,6 +820,30 @@ spec:
 4. Push to the branch (`git push origin feature/amazing-feature`)
 5. Open a Pull Request
 
+## Demo
+
+Fault inject → detect → remediate on the self-healing controller (minikube CI path):
+
+```bash
+# See CI job "Self-Healing Controller Tests" or:
+bash scripts/demo_remediation_record.sh
+```
+
+<p align="center">
+  <img src="docs/assets/chaos-remediation.svg" alt="Self-healing remediation demo: crash-heal inject to remediations_total success" width="100%" />
+</p>
+
+## Results
+
+Measured from CI (not estimates). Details: [docs/results.md](docs/results.md) · [docs/results.json](docs/results.json).
+
+| Metric | Value | Source |
+| --- | ---: | --- |
+| Time to remediation (crashloop inject → success metric) | **20.1 s** | [38062111574](https://github.com/justrunme/self-healing-infrastructure-chaos-engineering/actions/runs/38062111574) (Self-Healing Controller Tests) |
+| Remediation action | `restart_crash_loop` | same run |
+| Brake after budget exhaustion | engaged (`budget_exhausted`) | same run |
+
+
 ## 📄 License
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
