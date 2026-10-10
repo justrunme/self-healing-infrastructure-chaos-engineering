@@ -28,6 +28,21 @@ Case study: [Self-Healing Infrastructure](https://justrunme.com/cases/self-heali
 ./scripts/test-chaos.sh
 ```
 
+## Architecture
+
+```mermaid
+flowchart TB
+  TF[terraform] --> K8s[kubernetes manifests]
+  K8s --> Ctrl[self-healing controller]
+  K8s --> Mon[monitoring Prometheus/Grafana]
+  K8s --> Chaos[chaos-engineering / Chaos Mesh]
+  K8s --> Kured[kured]
+  Ctrl --> App[test-app workloads]
+  Chaos --> App
+  CI[.github/workflows/ci-cd.yml] --> TF
+  CI --> Rel[release.yml]
+```
+
 ## On justrunme.com
 
 This repository is the public evidence base for:
