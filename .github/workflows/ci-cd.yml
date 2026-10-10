@@ -262,56 +262,149 @@ jobs:
           docker build -t self-healing-controller:latest .
           minikube image load self-healing-controller:latest
 
-      # Ensure self-healing namespace exists
-      - name: Ensure self-healing namespace exists
+      # Deploy self-healing controller
+      - name: Deploy self-healing controller
         run: |
-          if ! minikube kubectl -- get namespace self-healing &>/dev/null; then
-            echo "⚠️ Namespace 'self-healing' not found—creating it for tests"
-            minikube kubectl -- create namespace self-healing
-          else
-            echo "✅ Namespace 'self-healing' exists"
-          fi
+          echo "📦 Creating self-healing namespace..."
+          minikube kubectl -- create namespace self-healing || true
+          
+          echo "📦 Creating slack secret..."
+          minikube kubectl -- apply -f kubernetes/self-healing/slack-secret.yaml
+          
+          echo "📦 Deploying self-healing controller..."
+          minikube kubectl -- apply -f kubernetes/self-healing/deployment.yaml
+          
+          echo "📦 Deploying test-app..."
+          minikube kubectl -- apply -f kubernetes/test-app/test-app.yaml
 
       - name: Wait for components to be ready
         run: |
           echo "🚀 Waiting for Self-Healing Controller to roll out..."
-          minikube kubectl -- rollout status deployment/self-healing-controller -n self-healing --timeout=120s || echo "Self-Healing Controller deployment not found, skipping"
+          minikube kubectl -- rollout status deployment/self-healing-controller -n self-healing --timeout=120s
           
           echo "🚀 Waiting for test-app to roll out..."
-          minikube kubectl -- rollout status deployment/test-app -n test-app --timeout=120s || echo "test-app deployment not found, skipping"
+          minikube kubectl -- rollout status deployment/test-app -n test-app --timeout=120s
 
       - name: Test Self-Healing Controller health
         run: |
-          if minikube kubectl -- get svc self-healing-controller -n self-healing &>/dev/null; then
-            # Start port-forward in background
-            minikube kubectl -- port-forward -n self-healing svc/self-healing-controller 8081:8080 &
-            PF_PID=$!
-            sleep 10
+          # Start port-forward in background
+          minikube kubectl -- port-forward -n self-healing svc/self-healing-controller 8081:8080 &
+          PF_PID=$!
+          sleep 10
 
-            # Test health endpoint
-            curl -f http://localhost:8081/health || echo "Health endpoint test failed"
-            curl -f http://localhost:8081/metrics || echo "Metrics endpoint test failed"
+          # Test health endpoint
+          curl -f http://localhost:8081/health
+          curl -f http://localhost:8081/metrics
 
-            kill $PF_PID
-          else
-            echo "⚠️ Self-Healing Controller service missing, skipping health test"
-          fi
+          # Verify Prometheus metrics are exposed
+          curl -s http://localhost:8081/metrics | grep -q "remediations_total" || (echo "Missing remediations_total metric" && exit 1)
+          curl -s http://localhost:8081/metrics | grep -q "brake_engaged" || (echo "Missing brake_engaged metric" && exit 1)
+          curl -s http://localhost:8081/metrics | grep -q "remediation_budget_remaining" || (echo "Missing remediation_budget_remaining metric" && exit 1)
 
-      - name: Test pod failure recovery
+          kill $PF_PID
+
+      - name: Test bounded pod failure recovery
         run: |
-          echo "Creating a failing pod to test self-healing..."
-          minikube kubectl -- run test-healing-pod --image=busybox --command -- /bin/sh -c "sleep 3 && exit 1" -n test-app
-          sleep 15
+          set -euo pipefail
+          echo "Injecting crashlooping deployment (controller remediates by deleting the pod)..."
+          minikube kubectl -- apply -f - <<'EOF'
+          apiVersion: apps/v1
+          kind: Deployment
+          metadata:
+            name: crash-heal
+            namespace: test-app
+          spec:
+            replicas: 1
+            selector:
+              matchLabels:
+                app: crash-heal
+            template:
+              metadata:
+                labels:
+                  app: crash-heal
+              spec:
+                containers:
+                  - name: crash
+                    image: busybox:1.36
+                    command: ["/bin/sh", "-c", "exit 1"]
+          EOF
 
-          pod_status=$(minikube kubectl -- get pod test-healing-pod -n test-app -o jsonpath='{.status.phase}' 2>/dev/null || echo "NotFound")
-          if [ "$pod_status" = "NotFound" ]; then
-            echo "✅ Self-Healing Controller successfully detected and handled failing pod"
-          else
-            echo "❌ Self-Healing Controller did not handle failing pod (status: $pod_status)"
+          minikube kubectl -- port-forward -n self-healing svc/self-healing-controller 8082:8080 &
+          PF_PID=$!
+          trap 'kill $PF_PID 2>/dev/null || true' EXIT
+          sleep 5
+
+          found=0
+          for _ in $(seq 1 24); do
+            metrics=$(curl -sf http://localhost:8082/metrics || true)
+            if echo "$metrics" | grep -E 'remediations_total\{[^}]*result="success"'; then
+              found=1
+              break
+            fi
+            sleep 5
+          done
+
+          if [ "$found" -ne 1 ]; then
+            echo "Controller did not record a successful remediation within 120s"
+            curl -s http://localhost:8082/metrics || true
+            minikube kubectl -- logs -n self-healing deploy/self-healing-controller --tail=80
+            minikube kubectl -- get pods -n test-app -o wide
+            minikube kubectl -- get events -n test-app --sort-by='.lastTimestamp' | tail -20
             exit 1
           fi
 
-          minikube kubectl -- delete pod test-healing-pod -n test-app --ignore-not-found=true
+          minikube kubectl -- get deployment crash-heal -n test-app
+          minikube kubectl -- delete deployment crash-heal -n test-app --wait=true
+          echo "Controller remediating crashlooping deployment and deployment still present"
+
+      - name: Test remediation brake with budget exhaustion
+        run: |
+          set -euo pipefail
+          echo "Testing remediation brake with budget exhaustion..."
+
+          minikube kubectl -- set env deployment/self-healing-controller -n self-healing \
+            REMEDIATION_BUDGET_PER_NAMESPACE=2 \
+            REMEDIATION_COOLDOWN_SECONDS=1
+          minikube kubectl -- rollout status deployment/self-healing-controller -n self-healing --timeout=90s
+
+          for i in 1 2 3 4 5; do
+            minikube kubectl -- run "brake-test-pod-$i" --image=busybox:1.36 --restart=Never \
+              -n test-app --command -- /bin/sh -c "exit 1"
+          done
+
+          minikube kubectl -- port-forward -n self-healing svc/self-healing-controller 8083:8080 &
+          PF_PID=$!
+          trap 'kill $PF_PID 2>/dev/null || true' EXIT
+          sleep 5
+
+          engaged=0
+          for _ in $(seq 1 24); do
+            metrics=$(curl -sf http://localhost:8083/metrics || true)
+            if echo "$metrics" | grep -E 'brake_engaged\{[^}]*reason="budget_exhausted"[^}]*\} 1'; then
+              engaged=1
+              break
+            fi
+            if echo "$metrics" | grep -E 'remediations_total\{[^}]*result="brake_engaged"'; then
+              engaged=1
+              break
+            fi
+            sleep 5
+          done
+
+          if [ "$engaged" -ne 1 ]; then
+            echo "Brake did not engage after budget exhaustion"
+            curl -s http://localhost:8083/metrics || true
+            minikube kubectl -- logs -n self-healing deploy/self-healing-controller --tail=80
+            minikube kubectl -- get pods -n test-app -o wide
+            exit 1
+          fi
+
+          curl -sf http://localhost:8083/metrics | grep 'remediation_budget_remaining'
+          echo "Brake engaged after budget exhaustion"
+
+          for i in 1 2 3 4 5; do
+            minikube kubectl -- delete pod "brake-test-pod-$i" -n test-app --ignore-not-found=true
+          done
 
   # 5. Monitoring Tests
   monitoring-test:
@@ -478,15 +571,20 @@ jobs:
       - name: Setup Minikube
         uses: ./.github/actions/setup-minikube
 
-      # ——— Гардим namespace ———
-      - name: Ensure test-app namespace exists
+      - name: Load Docker image
         run: |
-          if ! minikube kubectl -- get namespace test-app &>/dev/null; then
-            echo "⚠️ Namespace 'test-app' not found—creating it for performance tests"
-            minikube kubectl -- create namespace test-app
-          else
-            echo "✅ Namespace 'test-app' exists"
-          fi
+          cd kubernetes/self-healing
+          docker build -t self-healing-controller:latest .
+          minikube image load self-healing-controller:latest
+
+      - name: Deploy controller and test-app
+        run: |
+          minikube kubectl -- create namespace self-healing || true
+          minikube kubectl -- apply -f kubernetes/self-healing/slack-secret.yaml
+          minikube kubectl -- apply -f kubernetes/self-healing/deployment.yaml
+          minikube kubectl -- apply -f kubernetes/test-app/test-app.yaml
+          minikube kubectl -- rollout status deployment/self-healing-controller -n self-healing --timeout=120s
+          minikube kubectl -- rollout status deployment/test-app -n test-app --timeout=120s
 
       - name: Test resource limits
         run: |

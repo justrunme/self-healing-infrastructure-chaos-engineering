@@ -58,6 +58,7 @@ nav:
   - Self-Healing:
     - Logic: self-healing/logic.md
     - Controller: self-healing/controller.md
+    - Bounded Remediation: bounded-remediation.md
   - Chaos Engineering:
     - Overview: chaos-engineering/overview.md
   - CI/CD Pipeline:
