@@ -158,8 +158,8 @@ class TestSelfHealingController:
         result = controller._is_pod_failing(pod)
         assert result is True
 
-    def test_is_pod_failing_not_ready(self, controller):
-        """Test pod failure detection for not ready condition"""
+    def test_is_pod_failing_not_ready_is_not_terminal(self, controller):
+        """Starting pods are Ready=False and must not be treated as failed."""
         pod = MagicMock()
         pod.status.phase = "Running"
 
@@ -169,7 +169,7 @@ class TestSelfHealingController:
         pod.status.conditions = [condition]
 
         result = controller._is_pod_failing(pod)
-        assert result is True
+        assert result is False
 
     def test_is_pod_failing_healthy(self, controller):
         """Test pod failure detection for healthy pod"""
@@ -185,6 +185,18 @@ class TestSelfHealingController:
         pod = MagicMock()
         container = MagicMock()
         container.restart_count = 5
+        container.state.waiting = None
+        pod.status.container_statuses = [container]
+
+        result = controller._is_pod_crash_looping(pod)
+        assert result is True
+
+    def test_is_pod_crash_looping_waiting_reason(self, controller):
+        """CrashLoopBackOff is a crash loop even before the restart threshold."""
+        pod = MagicMock()
+        container = MagicMock()
+        container.restart_count = 1
+        container.state.waiting.reason = "CrashLoopBackOff"
         pod.status.container_statuses = [container]
 
         result = controller._is_pod_crash_looping(pod)
@@ -195,6 +207,7 @@ class TestSelfHealingController:
         pod = MagicMock()
         container = MagicMock()
         container.restart_count = 1
+        container.state.waiting = None
         pod.status.container_statuses = [container]
 
         result = controller._is_pod_crash_looping(pod)

@@ -307,21 +307,21 @@ class SelfHealingController:
         return False
 
     def _is_pod_failing(self, pod):
-        """Check if pod is in a failed state"""
+        """Check if pod is in a terminal failed state.
+
+        Ready=False alone is not a failure: new pods are unready while they start.
+        """
         if pod.status.phase in ["Failed", "Unknown"]:
             return True
-
-        if pod.status.conditions:
-            for condition in pod.status.conditions:
-                if condition.type == "Ready" and condition.status == "False":
-                    return True
-
         return False
 
     def _is_pod_crash_looping(self, pod):
         """Check if pod is crash looping"""
         if pod.status.container_statuses:
             for container in pod.status.container_statuses:
+                waiting = getattr(container.state, "waiting", None)
+                if waiting is not None and getattr(waiting, "reason", None) == "CrashLoopBackOff":
+                    return True
                 if container.restart_count > self.config["pod_failure_threshold"]:
                     return True
         return False
