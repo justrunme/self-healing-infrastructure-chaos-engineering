@@ -265,6 +265,9 @@ jobs:
       # Deploy self-healing controller
       - name: Deploy self-healing controller
         run: |
+          echo "📦 Creating self-healing namespace..."
+          minikube kubectl -- create namespace self-healing || true
+          
           echo "📦 Creating slack secret..."
           minikube kubectl -- apply -f kubernetes/self-healing/slack-secret.yaml
           
