@@ -64,6 +64,12 @@ spec:
               value: "30"
             - name: REMEDIATION_BUDGET_PER_WORKLOAD
               value: "3"
+            # Safe defaults: dry-run on, empty allowlist. Live remediation requires
+            # DRY_RUN=false AND a non-empty REMEDIATION_NAMESPACES (comma-separated).
+            - name: DRY_RUN
+              value: "true"
+            - name: REMEDIATION_NAMESPACES
+              value: ""
             - name: SLACK_NOTIFICATIONS_ENABLED
               value: "false"
             - name: SLACK_CHANNEL

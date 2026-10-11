@@ -27,6 +27,7 @@ this release re-aligns the newest tag with the historical 2.x series.
 
 ### Changed
 - README header refreshed for consistent pinned layout
+- `DRY_RUN` now defaults to `true`; live remediation requires `DRY_RUN=false` and a non-empty `REMEDIATION_NAMESPACES` allowlist
 
 ## [1.1.0] - 2026-10-10
 

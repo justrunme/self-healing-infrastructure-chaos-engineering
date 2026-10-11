@@ -131,14 +131,15 @@ class TestSelfHealingController:
         assert config["pod_failure_threshold"] == 3
 
     def test_load_remediation_config(self, controller):
-        """Test remediation configuration loading"""
+        """Test remediation configuration loading — safe defaults"""
         config = controller.remediation_config
 
         assert config.budget_per_namespace == 10
         assert config.budget_per_workload == 3
         assert config.budget_window_seconds == 300
         assert config.cooldown_seconds == 60
-        assert config.dry_run is False
+        assert config.dry_run is True
+        assert config.allowed_namespaces == frozenset()
         assert config.require_approval_for_dangerous is True
         assert config.pod_delete_grace_period_seconds == 30
 
@@ -151,7 +152,8 @@ class TestSelfHealingController:
                 "REMEDIATION_BUDGET_PER_WORKLOAD": "2",
                 "REMEDIATION_BUDGET_WINDOW_SECONDS": "600",
                 "REMEDIATION_COOLDOWN_SECONDS": "120",
-                "DRY_RUN": "true",
+                "DRY_RUN": "false",
+                "REMEDIATION_NAMESPACES": "test-app, other-ns",
                 "REQUIRE_APPROVAL_FOR_DANGEROUS": "false",
             },
         ):
@@ -166,7 +168,8 @@ class TestSelfHealingController:
                             assert config.budget_per_workload == 2
                             assert config.budget_window_seconds == 600
                             assert config.cooldown_seconds == 120
-                            assert config.dry_run is True
+                            assert config.dry_run is False
+                            assert config.allowed_namespaces == frozenset({"test-app", "other-ns"})
                             assert config.require_approval_for_dangerous is False
 
     def test_is_pod_failing_failed_state(self, controller):
@@ -482,9 +485,70 @@ class TestSelfHealingController:
 
         controller.k8s_client.delete_namespaced_pod.assert_not_called()
 
+    def test_default_dry_run_does_not_delete_unhealthy_pod(self, controller):
+        """NEGATIVE: defaults keep dry-run on — unhealthy owned pod is not deleted."""
+        assert controller.remediation_config.dry_run is True
+        assert controller.remediation_config.allowed_namespaces == frozenset()
+
+        pod = _owned_pod(name="unhealthy-pod", namespace="test-ns")
+        rs = MagicMock()
+        rs.metadata.owner_references = [_owner_ref("Deployment", "app")]
+        controller.apps_v1.read_namespaced_replica_set = MagicMock(return_value=rs)
+
+        with patch("self_healing_controller.remediations_total") as mock_counter:
+            controller._handle_pod_failure(pod)
+
+        controller.k8s_client.delete_namespaced_pod.assert_not_called()
+        mock_counter.labels.assert_called_with(namespace="test-ns", action="restart_pod", result="dry_run")
+        mock_counter.labels.return_value.inc.assert_called()
+
+    def test_live_mode_without_allowlist_refuses_delete(self, controller):
+        """NEGATIVE: DRY_RUN=false with empty allowlist must not delete."""
+        controller.remediation_config.dry_run = False
+        controller.remediation_config.allowed_namespaces = frozenset()
+
+        pod = _owned_pod(name="unhealthy-pod", namespace="test-ns")
+        rs = MagicMock()
+        rs.metadata.owner_references = [_owner_ref("Deployment", "app")]
+        controller.apps_v1.read_namespaced_replica_set = MagicMock(return_value=rs)
+
+        controller._handle_pod_failure(pod)
+
+        controller.k8s_client.delete_namespaced_pod.assert_not_called()
+
+    def test_live_mode_outside_allowlist_does_not_delete(self, controller):
+        """NEGATIVE: DRY_RUN=false but pod namespace outside allowlist — not deleted."""
+        controller.remediation_config.dry_run = False
+        controller.remediation_config.allowed_namespaces = frozenset({"allowed-ns"})
+
+        pod = _owned_pod(name="unhealthy-pod", namespace="other-ns")
+        rs = MagicMock()
+        rs.metadata.owner_references = [_owner_ref("Deployment", "app")]
+        controller.apps_v1.read_namespaced_replica_set = MagicMock(return_value=rs)
+
+        controller._handle_pod_failure(pod)
+
+        controller.k8s_client.delete_namespaced_pod.assert_not_called()
+
+    def test_live_mode_with_allowlist_deletes_owned_pod(self, controller):
+        """Live remediation deletes when DRY_RUN=false and namespace is allowlisted."""
+        controller.remediation_config.dry_run = False
+        controller.remediation_config.allowed_namespaces = frozenset({"test-ns"})
+
+        pod = _owned_pod(name="unhealthy-pod", namespace="test-ns")
+        rs = MagicMock()
+        rs.metadata.owner_references = [_owner_ref("Deployment", "app")]
+        controller.apps_v1.read_namespaced_replica_set = MagicMock(return_value=rs)
+
+        controller._handle_pod_failure(pod)
+
+        controller.k8s_client.delete_namespaced_pod.assert_called_once()
+
     def test_handle_pod_failure_budget_exhausted(self, controller):
         """Test pod failure handling when budget exhausted"""
         namespace = "test-ns"
+        controller.remediation_config.dry_run = False
+        controller.remediation_config.allowed_namespaces = frozenset({namespace})
         controller.remediation_config.budget_per_namespace = 1
         controller.namespace_budgets[namespace] = RemediationBudget(1, 300)
 
@@ -521,6 +585,8 @@ class TestSelfHealingController:
 
     def test_handle_node_failure_with_approval_cordons(self, controller):
         """Approved NotReady handling cordons the node (no fake kured annotation)."""
+        controller.remediation_config.dry_run = False
+        controller.remediation_config.allowed_namespaces = frozenset({"kube-system"})
         node = MagicMock()
         node.metadata.name = "test-node"
         node.metadata.annotations = {"self-healing.justrunme.com/approve-cordon": "true"}
@@ -569,6 +635,9 @@ class TestSelfHealingController:
 
         assert "running" in metrics
         assert "dry_run" in metrics
+        assert metrics["dry_run"] is True
+        assert "allowed_namespaces" in metrics
+        assert metrics["allowed_namespaces"] == []
         assert "budget_per_namespace" in metrics
         assert "budget_per_workload" in metrics
         assert "cooldown_seconds" in metrics
@@ -580,6 +649,8 @@ class TestSelfHealingController:
         mock_result.returncode = 0
         mock_run.return_value = mock_result
 
+        controller.remediation_config.dry_run = False
+        controller.remediation_config.allowed_namespaces = frozenset({"test-namespace"})
         pod = MagicMock()
         pod.metadata.labels = {
             "app.kubernetes.io/managed-by": "Helm",

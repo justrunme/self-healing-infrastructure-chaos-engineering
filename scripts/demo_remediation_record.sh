@@ -1,5 +1,10 @@
 #!/usr/bin/env bash
 set -euo pipefail
+echo "==> Ensure live remediation for test-app (DRY_RUN=false + allowlist)"
+minikube kubectl -- set env deployment/self-healing-controller -n self-healing \
+  DRY_RUN=false \
+  REMEDIATION_NAMESPACES=test-app
+minikube kubectl -- rollout status deployment/self-healing-controller -n self-healing --timeout=90s
 echo "==> Inject crashlooping deployment crash-heal"
 minikube kubectl -- apply -f - <<'EOF'
 apiVersion: apps/v1

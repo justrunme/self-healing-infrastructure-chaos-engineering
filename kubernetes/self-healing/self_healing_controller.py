@@ -88,6 +88,7 @@ class RemediationConfig:
     budget_window_seconds: int
     cooldown_seconds: int
     dry_run: bool
+    allowed_namespaces: frozenset
     require_approval_for_dangerous: bool
     pod_delete_grace_period_seconds: Optional[int]
     slack_brake_rate_limit_seconds: int
@@ -286,16 +287,25 @@ class SelfHealingController:
             "leader_election_enabled": os.getenv("LEADER_ELECTION_ENABLED", "true").lower() == "true",
         }
 
+    @staticmethod
+    def _parse_namespace_allowlist(raw: Optional[str] = None) -> frozenset:
+        """Parse comma-separated REMEDIATION_NAMESPACES into a frozenset."""
+        value = os.getenv("REMEDIATION_NAMESPACES", "") if raw is None else raw
+        return frozenset(ns.strip() for ns in value.split(",") if ns.strip())
+
     def _load_remediation_config(self) -> RemediationConfig:
         """Load remediation brake configuration"""
         grace_raw = os.getenv("POD_DELETE_GRACE_PERIOD_SECONDS", "30")
         grace_period = None if grace_raw.lower() in {"", "none", "default"} else int(grace_raw)
+        # Default dry-run=true: a fresh install must not mutate the cluster.
+        # Live remediation requires DRY_RUN=false AND a non-empty allowlist.
         return RemediationConfig(
             budget_per_namespace=int(os.getenv("REMEDIATION_BUDGET_PER_NAMESPACE", 10)),
             budget_per_workload=int(os.getenv("REMEDIATION_BUDGET_PER_WORKLOAD", 3)),
             budget_window_seconds=int(os.getenv("REMEDIATION_BUDGET_WINDOW_SECONDS", 300)),
             cooldown_seconds=int(os.getenv("REMEDIATION_COOLDOWN_SECONDS", 60)),
-            dry_run=os.getenv("DRY_RUN", "false").lower() == "true",
+            dry_run=os.getenv("DRY_RUN", "true").lower() == "true",
+            allowed_namespaces=self._parse_namespace_allowlist(),
             require_approval_for_dangerous=os.getenv("REQUIRE_APPROVAL_FOR_DANGEROUS", "true").lower() == "true",
             pod_delete_grace_period_seconds=grace_period,
             slack_brake_rate_limit_seconds=int(os.getenv("SLACK_BRAKE_RATE_LIMIT_SECONDS", 60)),
@@ -318,6 +328,16 @@ class SelfHealingController:
 
         if self.remediation_config.dry_run:
             logger.warning("DRY RUN MODE ENABLED - No actual remediation will be performed")
+        elif not self.remediation_config.allowed_namespaces:
+            logger.warning(
+                "DRY_RUN=false but REMEDIATION_NAMESPACES allowlist is empty - "
+                "refusing live remediation until a non-empty allowlist is configured"
+            )
+        else:
+            logger.info(
+                "Live remediation enabled for namespaces: %s",
+                ", ".join(sorted(self.remediation_config.allowed_namespaces)),
+            )
 
         self._start_health_server()
 
@@ -583,8 +603,34 @@ class SelfHealingController:
         return f"{namespace}/{kind}/{name}"
 
     def _can_remediate(self, namespace: str, workload_key: str, action: str) -> tuple[bool, Optional[str]]:
-        """Check if remediation is allowed (namespace cap + workload budget + cooldown)"""
+        """Check if remediation is allowed (allowlist + namespace cap + workload budget + cooldown).
+
+        Dry-run mode skips the allowlist gate so operators can observe intended actions.
+        Live mutations require DRY_RUN=false and a non-empty REMEDIATION_NAMESPACES allowlist
+        that includes the target namespace.
+        """
         with self._state_lock:
+            if not self.remediation_config.dry_run:
+                if not self.remediation_config.allowed_namespaces:
+                    reason = "allowlist_empty"
+                    logger.warning(
+                        "Refusing live remediation for %s action=%s: REMEDIATION_NAMESPACES is empty",
+                        workload_key,
+                        action,
+                    )
+                    brake_engaged.labels(namespace=namespace, reason="allowlist_empty").set(1)
+                    return False, reason
+                if namespace not in self.remediation_config.allowed_namespaces:
+                    reason = f"namespace_not_allowed:{namespace}"
+                    logger.warning(
+                        "Refusing live remediation for %s action=%s: namespace %s not in allowlist",
+                        workload_key,
+                        action,
+                        namespace,
+                    )
+                    brake_engaged.labels(namespace=namespace, reason="namespace_not_allowed").set(1)
+                    return False, reason
+
             ns_budget = self.namespace_budgets[namespace]
             if not ns_budget.can_remediate():
                 reason = f"budget_exhausted:namespace={namespace}"
@@ -1072,6 +1118,7 @@ class SelfHealingController:
         return {
             "running": self.running,
             "dry_run": self.remediation_config.dry_run,
+            "allowed_namespaces": sorted(self.remediation_config.allowed_namespaces),
             "budget_per_namespace": self.remediation_config.budget_per_namespace,
             "budget_per_workload": self.remediation_config.budget_per_workload,
             "cooldown_seconds": self.remediation_config.cooldown_seconds,

@@ -76,7 +76,8 @@ A comprehensive **Kubernetes-based self-healing infrastructure** that automatica
 ### 🛑 **Bounded Remediation (Human Brake)**
 - **Per-Namespace Budget**: Configurable remediation limit within sliding time window
 - **Per-Object Cooldown**: Prevents rapid-fire remediation of the same resource
-- **DRY_RUN Mode**: Test remediation logic without making actual changes
+- **DRY_RUN Mode (default on)**: Fresh installs observe remediations without mutating the cluster
+- **Namespace Allowlist**: Live remediation requires `DRY_RUN=false` and `REMEDIATION_NAMESPACES`
 - **Approval Gates**: Dangerous actions (node reboot/drain) require explicit annotation approval
 - **Prometheus Metrics**: Track remediation actions, brake engagement, and budget consumption
 - **Fail-Safe Design**: Automatically stops remediation when limits are exceeded to prevent cascading failures
@@ -415,11 +416,22 @@ REMEDIATION_BUDGET_WINDOW_SECONDS=300  # 5 minutes
 # Per-object cooldown (seconds)
 REMEDIATION_COOLDOWN_SECONDS=60  # Wait 60s before remediating same object again
 
-# Dry-run mode (test without making changes)
-DRY_RUN=false  # Set to 'true' for testing
+# Dry-run mode (default true — fresh installs do not mutate)
+DRY_RUN=true
+
+# Comma-separated namespace allowlist required for live remediation
+REMEDIATION_NAMESPACES=
 
 # Require approval for dangerous actions
 REQUIRE_APPROVAL_FOR_DANGEROUS=true  # Node reboot/drain needs approval
+```
+
+Live remediation requires **both** `DRY_RUN=false` and a non-empty allowlist, for example:
+
+```bash
+kubectl set env deployment/self-healing-controller -n self-healing \
+  DRY_RUN=false \
+  REMEDIATION_NAMESPACES=test-app
 ```
 
 ### Example Deployment with Brake Configuration
@@ -444,7 +456,9 @@ spec:
         - name: REMEDIATION_COOLDOWN_SECONDS
           value: "60"
         - name: DRY_RUN
-          value: "false"
+          value: "true"
+        - name: REMEDIATION_NAMESPACES
+          value: ""
         - name: REQUIRE_APPROVAL_FOR_DANGEROUS
           value: "true"
 ```
@@ -482,16 +496,20 @@ brake_engaged{reason="budget_exhausted"} == 1
 remediation_budget_remaining
 ```
 
-### DRY_RUN Mode
+### DRY_RUN Mode and Namespace Allowlist
 
-Test remediation logic without making actual changes:
+Dry-run is **on by default**. Check logs/metrics for intended actions without deletes:
 
 ```bash
-# Enable dry-run mode
-kubectl set env deployment/self-healing-controller -n self-healing DRY_RUN=true
-
-# Check logs to see what would happen
 kubectl logs -n self-healing -f deployment/self-healing-controller | grep "DRY RUN"
+```
+
+To enable live remediation for specific namespaces only:
+
+```bash
+kubectl set env deployment/self-healing-controller -n self-healing \
+  DRY_RUN=false \
+  REMEDIATION_NAMESPACES=test-app
 ```
 
 ## 💼 Business Value & ROI

@@ -29,6 +29,11 @@ jobs:
           minikube kubectl -- apply -f kubernetes/test-app/test-app.yaml
           minikube kubectl -- rollout status deployment/self-healing-controller -n self-healing --timeout=120s
           minikube kubectl -- rollout status deployment/test-app -n test-app --timeout=120s
+          # Demo records live remediation; opt in explicitly
+          minikube kubectl -- set env deployment/self-healing-controller -n self-healing \
+            DRY_RUN=false \
+            REMEDIATION_NAMESPACES=test-app
+          minikube kubectl -- rollout status deployment/self-healing-controller -n self-healing --timeout=90s
       - name: Record fault-inject remediation demo
         run: |
           mkdir -p docs/assets

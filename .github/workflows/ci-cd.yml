@@ -303,6 +303,144 @@ jobs:
           curl -s http://localhost:8081/metrics | grep -q "remediation_budget_remaining" || (echo "Missing remediation_budget_remaining metric" && exit 1)
           curl -s http://localhost:8081/metrics | grep -q "remediation_skips_total" || (echo "Missing remediation_skips_total metric" && exit 1)
 
+          # Verify safe defaults are set on the Deployment
+          dry_run=$(minikube kubectl -- get deploy self-healing-controller -n self-healing \
+            -o jsonpath='{.spec.template.spec.containers[0].env[?(@.name=="DRY_RUN")].value}')
+          allowlist=$(minikube kubectl -- get deploy self-healing-controller -n self-healing \
+            -o jsonpath='{.spec.template.spec.containers[0].env[?(@.name=="REMEDIATION_NAMESPACES")].value}')
+          test "$dry_run" = "true" || (echo "Expected DRY_RUN=true by default, got: $dry_run" && exit 1)
+          test -z "$allowlist" || (echo "Expected empty REMEDIATION_NAMESPACES by default, got: $allowlist" && exit 1)
+
+      - name: NEGATIVE - defaults must not delete unhealthy pods
+        run: |
+          set -euo pipefail
+          echo "Injecting crashloop under default dry-run (must NOT delete; only dry_run metric)..."
+          minikube kubectl -- apply -f - <<'EOF'
+          apiVersion: apps/v1
+          kind: Deployment
+          metadata:
+            name: dry-run-neg
+            namespace: test-app
+          spec:
+            replicas: 1
+            selector:
+              matchLabels:
+                app: dry-run-neg
+            template:
+              metadata:
+                labels:
+                  app: dry-run-neg
+              spec:
+                containers:
+                  - name: crash
+                    image: busybox:1.36
+                    command: ["/bin/sh", "-c", "exit 1"]
+          EOF
+
+          ./scripts/port_forward_leader.sh self-healing 8086 &
+          PF_PID=$!
+          trap 'kill $PF_PID 2>/dev/null || true' EXIT
+          sleep 5
+
+          found=0
+          for _ in $(seq 1 24); do
+            metrics=$(curl -sf http://localhost:8086/metrics || true)
+            if echo "$metrics" | grep -E 'remediations_total\{[^}]*result="dry_run"'; then
+              found=1
+              break
+            fi
+            sleep 5
+          done
+
+          if [ "$found" -ne 1 ]; then
+            echo "Expected dry_run remediation metric under defaults"
+            curl -s http://localhost:8086/metrics || true
+            minikube kubectl -- logs -n self-healing deploy/self-healing-controller --tail=80
+            exit 1
+          fi
+
+          if echo "$(curl -sf http://localhost:8086/metrics || true)" | grep -E 'remediations_total\{[^}]*result="success"'; then
+            echo "Defaults must not produce live success remediations"
+            exit 1
+          fi
+
+          minikube kubectl -- delete deployment dry-run-neg -n test-app --wait=true
+          echo "NEGATIVE defaults test passed (dry-run only, no delete)"
+
+      - name: NEGATIVE - live mode outside allowlist must not delete
+        run: |
+          set -euo pipefail
+          echo "Setting DRY_RUN=false with allowlist excluding test-app..."
+          minikube kubectl -- set env deployment/self-healing-controller -n self-healing \
+            DRY_RUN=false \
+            REMEDIATION_NAMESPACES=other-ns
+          minikube kubectl -- rollout status deployment/self-healing-controller -n self-healing --timeout=90s
+
+          minikube kubectl -- apply -f - <<'EOF'
+          apiVersion: apps/v1
+          kind: Deployment
+          metadata:
+            name: allowlist-neg
+            namespace: test-app
+          spec:
+            replicas: 1
+            selector:
+              matchLabels:
+                app: allowlist-neg
+            template:
+              metadata:
+                labels:
+                  app: allowlist-neg
+              spec:
+                containers:
+                  - name: crash
+                    image: busybox:1.36
+                    command: ["/bin/sh", "-c", "exit 1"]
+          EOF
+
+          ./scripts/port_forward_leader.sh self-healing 8087 &
+          PF_PID=$!
+          trap 'kill $PF_PID 2>/dev/null || true' EXIT
+          sleep 5
+
+          refused=0
+          for _ in $(seq 1 24); do
+            metrics=$(curl -sf http://localhost:8087/metrics || true)
+            if echo "$metrics" | grep -E 'remediations_total\{[^}]*result="brake_engaged"'; then
+              refused=1
+              break
+            fi
+            if echo "$metrics" | grep -E 'brake_engaged\{[^}]*reason="namespace_not_allowed"'; then
+              refused=1
+              break
+            fi
+            sleep 5
+          done
+
+          if [ "$refused" -ne 1 ]; then
+            echo "Expected allowlist refusal (brake) for namespace outside allowlist"
+            curl -s http://localhost:8087/metrics || true
+            minikube kubectl -- logs -n self-healing deploy/self-healing-controller --tail=80
+            exit 1
+          fi
+
+          if echo "$(curl -sf http://localhost:8087/metrics || true)" | grep -E 'remediations_total\{[^}]*namespace="test-app"[^}]*result="success"'; then
+            echo "Pod outside allowlist must not be live-remediated"
+            exit 1
+          fi
+
+          minikube kubectl -- delete deployment allowlist-neg -n test-app --wait=true
+          echo "NEGATIVE allowlist test passed (no delete outside allowlist)"
+
+      - name: Enable live remediation for test-app
+        run: |
+          set -euo pipefail
+          echo "Enabling live remediation: DRY_RUN=false REMEDIATION_NAMESPACES=test-app"
+          minikube kubectl -- set env deployment/self-healing-controller -n self-healing \
+            DRY_RUN=false \
+            REMEDIATION_NAMESPACES=test-app
+          minikube kubectl -- rollout status deployment/self-healing-controller -n self-healing --timeout=90s
+
       - name: Test bounded pod failure recovery
         run: |
           set -euo pipefail
@@ -663,6 +801,11 @@ jobs:
           minikube kubectl -- apply -f kubernetes/test-app/test-app.yaml
           minikube kubectl -- rollout status deployment/self-healing-controller -n self-healing --timeout=120s
           minikube kubectl -- rollout status deployment/test-app -n test-app --timeout=120s
+          # Live remediation tests below require explicit opt-in
+          minikube kubectl -- set env deployment/self-healing-controller -n self-healing \
+            DRY_RUN=false \
+            REMEDIATION_NAMESPACES=test-app
+          minikube kubectl -- rollout status deployment/self-healing-controller -n self-healing --timeout=90s
 
       - name: Test resource limits
         run: |
