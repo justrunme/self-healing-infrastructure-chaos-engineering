@@ -287,22 +287,21 @@ jobs:
 
       - name: Test Self-Healing Controller health
         run: |
-          # Start port-forward in background
-          minikube kubectl -- port-forward -n self-healing svc/self-healing-controller 8081:8080 &
+          set -euo pipefail
+          ./scripts/port_forward_leader.sh self-healing 8081 &
           PF_PID=$!
-          sleep 10
+          trap 'kill $PF_PID 2>/dev/null || true' EXIT
+          sleep 8
 
-          # Test health endpoint
           curl -f http://localhost:8081/health
           curl -f http://localhost:8081/metrics
+          curl -s http://localhost:8081/metrics | grep -q 'self_healing_is_leader 1' \
+            || (echo "Port-forward is not attached to the leader" && exit 1)
 
-          # Verify Prometheus metrics are exposed
           curl -s http://localhost:8081/metrics | grep -q "remediations_total" || (echo "Missing remediations_total metric" && exit 1)
           curl -s http://localhost:8081/metrics | grep -q "brake_engaged" || (echo "Missing brake_engaged metric" && exit 1)
           curl -s http://localhost:8081/metrics | grep -q "remediation_budget_remaining" || (echo "Missing remediation_budget_remaining metric" && exit 1)
           curl -s http://localhost:8081/metrics | grep -q "remediation_skips_total" || (echo "Missing remediation_skips_total metric" && exit 1)
-
-          kill $PF_PID
 
       - name: Test bounded pod failure recovery
         run: |
@@ -330,7 +329,7 @@ jobs:
                     command: ["/bin/sh", "-c", "exit 1"]
           EOF
 
-          minikube kubectl -- port-forward -n self-healing svc/self-healing-controller 8082:8080 &
+          ./scripts/port_forward_leader.sh self-healing 8082 &
           PF_PID=$!
           trap 'kill $PF_PID 2>/dev/null || true' EXIT
           sleep 5
@@ -365,7 +364,7 @@ jobs:
           minikube kubectl -- run bare-skip-pod --image=busybox:1.36 --restart=Never \
             -n test-app --command -- /bin/sh -c "exit 1"
 
-          minikube kubectl -- port-forward -n self-healing svc/self-healing-controller 8084:8080 &
+          ./scripts/port_forward_leader.sh self-healing 8084 &
           PF_PID=$!
           trap 'kill $PF_PID 2>/dev/null || true' EXIT
           sleep 5
@@ -450,10 +449,11 @@ jobs:
           EOF
           done
 
-          minikube kubectl -- port-forward -n self-healing svc/self-healing-controller 8083:8080 &
+          ./scripts/port_forward_leader.sh self-healing 8083 &
           PF_PID=$!
           trap 'kill $PF_PID 2>/dev/null || true' EXIT
           sleep 5
+          curl -sf http://localhost:8083/metrics | grep -q 'self_healing_is_leader 1'
 
           engaged=0
           for _ in $(seq 1 24); do
@@ -719,7 +719,7 @@ jobs:
           EOF
             done
 
-            minikube kubectl -- port-forward -n self-healing svc/self-healing-controller 8085:8080 &
+            ./scripts/port_forward_leader.sh self-healing 8085 &
             PF_PID=$!
             trap 'kill $PF_PID 2>/dev/null || true' EXIT
             sleep 5

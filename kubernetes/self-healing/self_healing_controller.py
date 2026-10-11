@@ -542,7 +542,7 @@ class SelfHealingController:
                 waiting = getattr(container.state, "waiting", None)
                 if waiting is not None and getattr(waiting, "reason", None) == "CrashLoopBackOff":
                     return True
-                if container.restart_count > self.config["pod_failure_threshold"]:
+                if container.restart_count >= self.config["pod_failure_threshold"]:
                     return True
         return False
 
