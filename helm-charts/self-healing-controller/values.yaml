@@ -59,8 +59,11 @@ config:
   helmRollbackEnabled: true
   helmRollbackTimeout: 300
 
-  # Kured integration
-  kuredIntegrationEnabled: true
+  # Node NotReady handling (cordon; kured reboot trigger removed)
+  nodeCordonEnabled: true
+  leaderElectionEnabled: true
+  remediationBudgetPerWorkload: 3
+  podDeleteGracePeriodSeconds: 30
 
   # Slack notifications
   slackNotificationsEnabled: true

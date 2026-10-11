@@ -359,20 +359,71 @@ resource "kubernetes_cluster_role" "self_healing_controller" {
 
   rule {
     api_groups = [""]
-    resources  = ["pods", "nodes", "services", "endpoints", "events", "configmaps", "secrets"]
-    verbs      = ["get", "list", "watch", "create", "update", "patch", "delete"]
+    resources  = ["pods"]
+    verbs      = ["get", "list", "watch", "delete"]
+  }
+
+  rule {
+    api_groups = [""]
+    resources  = ["nodes"]
+    verbs      = ["get", "list", "watch", "patch"]
+  }
+
+  rule {
+    api_groups = [""]
+    resources  = ["events"]
+    verbs      = ["create"]
+  }
+
+  rule {
+    api_groups = [""]
+    resources  = ["secrets"]
+    verbs      = ["get", "list"]
   }
 
   rule {
     api_groups = ["apps"]
     resources  = ["deployments", "daemonsets", "replicasets", "statefulsets"]
-    verbs      = ["get", "list", "watch", "create", "update", "patch", "delete"]
+    verbs      = ["get", "list", "watch"]
   }
 
   rule {
-    api_groups = ["chaos-mesh.org"]
-    resources  = ["*"]
-    verbs      = ["get", "list", "watch", "create", "update", "patch", "delete"]
+    api_groups = ["batch"]
+    resources  = ["jobs"]
+    verbs      = ["get", "list", "watch"]
+  }
+}
+
+# Namespaced Role for leader-election leases
+resource "kubernetes_role" "self_healing_controller_leader" {
+  metadata {
+    name      = "self-healing-controller-leader"
+    namespace = kubernetes_namespace.self_healing.metadata[0].name
+  }
+
+  rule {
+    api_groups = ["coordination.k8s.io"]
+    resources  = ["leases"]
+    verbs      = ["get", "list", "watch", "create", "update", "patch"]
+  }
+}
+
+resource "kubernetes_role_binding" "self_healing_controller_leader" {
+  metadata {
+    name      = "self-healing-controller-leader"
+    namespace = kubernetes_namespace.self_healing.metadata[0].name
+  }
+
+  role_ref {
+    api_group = "rbac.authorization.k8s.io"
+    kind      = "Role"
+    name      = kubernetes_role.self_healing_controller_leader.metadata[0].name
+  }
+
+  subject {
+    kind      = "ServiceAccount"
+    name      = kubernetes_service_account.self_healing_controller.metadata[0].name
+    namespace = kubernetes_namespace.self_healing.metadata[0].name
   }
 }
 
@@ -409,7 +460,10 @@ resource "kubernetes_config_map" "self_healing_config" {
     "NODE_UNREACHABLE_TIMEOUT"     = "600"
     "HELM_ROLLBACK_ENABLED"        = "true"
     "HELM_ROLLBACK_TIMEOUT"        = "300"
-    "KURED_INTEGRATION_ENABLED"    = "true"
+    "NODE_CORDON_ENABLED"          = "true"
+    "LEADER_ELECTION_ENABLED"      = "true"
+    "POD_DELETE_GRACE_PERIOD_SECONDS" = "30"
+    "REMEDIATION_BUDGET_PER_WORKLOAD" = "3"
     "SLACK_NOTIFICATIONS_ENABLED"  = var.slack_notifications_enabled ? "true" : "false"
     "SLACK_WEBHOOK_URL"            = var.slack_webhook_url
     "SLACK_CHANNEL"                = var.slack_channel
@@ -432,7 +486,7 @@ resource "kubernetes_deployment" "self_healing_controller" {
   }
 
   spec {
-    replicas = 1
+    replicas = 2
 
     selector {
       match_labels = {
@@ -463,6 +517,24 @@ resource "kubernetes_deployment" "self_healing_controller" {
           env_from {
             config_map_ref {
               name = kubernetes_config_map.self_healing_config.metadata[0].name
+            }
+          }
+
+          env {
+            name = "POD_NAME"
+            value_from {
+              field_ref {
+                field_path = "metadata.name"
+              }
+            }
+          }
+
+          env {
+            name = "POD_NAMESPACE"
+            value_from {
+              field_ref {
+                field_path = "metadata.namespace"
+              }
             }
           }
 
