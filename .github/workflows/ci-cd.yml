@@ -314,8 +314,14 @@ jobs:
       - name: NEGATIVE - defaults must not delete unhealthy pods
         run: |
           set -euo pipefail
-          echo "Injecting crashloop under default dry-run (must NOT delete; only dry_run metric)..."
-          minikube kubectl -- apply -f - <<'EOF'
+          # shellcheck source=scripts/ci_e2e_helpers.sh
+          source ./scripts/ci_e2e_helpers.sh
+          trap 'stop_controller_port_forward' EXIT
+
+          wait_controller_rollout self-healing 120
+
+          echo "Injecting crashloop under default dry-run (must NOT delete; only dry_run metric/log)..."
+          kc apply -f - <<'EOF'
           apiVersion: apps/v1
           kind: Deployment
           metadata:
@@ -337,46 +343,71 @@ jobs:
                     command: ["/bin/sh", "-c", "exit 1"]
           EOF
 
-          ./scripts/port_forward_leader.sh self-healing 8086 &
-          PF_PID=$!
-          trap 'kill $PF_PID 2>/dev/null || true' EXIT
-          sleep 5
-
-          found=0
-          for _ in $(seq 1 24); do
-            metrics=$(curl -sf http://localhost:8086/metrics || true)
-            if echo "$metrics" | grep -E 'remediations_total\{[^}]*result="dry_run"'; then
-              found=1
+          # Wait for a workload pod and pin its UID (delete would mint a new UID).
+          pod_uid=""
+          for _ in $(seq 1 30); do
+            pod_uid=$(kc get pods -n test-app -l app=dry-run-neg \
+              -o jsonpath='{.items[0].metadata.uid}' 2>/dev/null || true)
+            if [[ -n "$pod_uid" ]]; then
               break
             fi
-            sleep 5
+            sleep 2
           done
+          test -n "$pod_uid" || { echo "dry-run-neg pod never appeared"; exit 1; }
+          echo "Pinned dry-run-neg pod uid=${pod_uid}"
 
-          if [ "$found" -ne 1 ]; then
-            echo "Expected dry_run remediation metric under defaults"
-            curl -s http://localhost:8086/metrics || true
-            minikube kubectl -- logs -n self-healing deploy/self-healing-controller --tail=80
+          start_controller_port_forward self-healing 8086
+
+          saw_dry_run() {
+            local metrics logs
+            metrics=$(scrape_controller_metrics self-healing 8086)
+            if echo "$metrics" | grep -E 'remediations_total\{[^}]*result="dry_run"'; then
+              return 0
+            fi
+            logs=$(controller_logs self-healing 300)
+            echo "$logs" | grep -E 'DRY RUN: Would restart' >/dev/null
+          }
+
+          if ! wait_until_timeout 120 saw_dry_run; then
+            echo "Expected dry_run remediation metric or DRY RUN log under defaults"
+            scrape_controller_metrics self-healing 8086 || true
+            controller_logs self-healing 120
             exit 1
           fi
 
-          if echo "$(curl -sf http://localhost:8086/metrics || true)" | grep -E 'remediations_total\{[^}]*result="success"'; then
+          metrics=$(scrape_controller_metrics self-healing 8086)
+          if echo "$metrics" | grep -E 'remediations_total\{[^}]*result="success"'; then
             echo "Defaults must not produce live success remediations"
             exit 1
           fi
 
-          minikube kubectl -- delete deployment dry-run-neg -n test-app --wait=true
+          still_uid=$(kc get pods -n test-app -l app=dry-run-neg \
+            -o jsonpath='{.items[0].metadata.uid}' 2>/dev/null || true)
+          if [[ "$still_uid" != "$pod_uid" ]]; then
+            echo "Unhealthy pod was replaced (uid ${pod_uid} -> ${still_uid}); defaults must not delete"
+            kc get pods -n test-app -l app=dry-run-neg -o wide || true
+            exit 1
+          fi
+
+          kc delete deployment dry-run-neg -n test-app --wait=true
           echo "NEGATIVE defaults test passed (dry-run only, no delete)"
 
       - name: NEGATIVE - live mode outside allowlist must not delete
         run: |
           set -euo pipefail
+          # shellcheck source=scripts/ci_e2e_helpers.sh
+          source ./scripts/ci_e2e_helpers.sh
+          trap 'stop_controller_port_forward' EXIT
+
           echo "Setting DRY_RUN=false with allowlist excluding test-app..."
-          minikube kubectl -- set env deployment/self-healing-controller -n self-healing \
+          kc set env deployment/self-healing-controller -n self-healing \
             DRY_RUN=false \
             REMEDIATION_NAMESPACES=other-ns
-          minikube kubectl -- rollout status deployment/self-healing-controller -n self-healing --timeout=90s
 
-          minikube kubectl -- apply -f - <<'EOF'
+          # Wait for the new ReplicaSet to be fully rolled out (no terminating pods).
+          wait_controller_rollout self-healing 120
+
+          kc apply -f - <<'EOF'
           apiVersion: apps/v1
           kind: Deployment
           metadata:
@@ -398,48 +429,84 @@ jobs:
                     command: ["/bin/sh", "-c", "exit 1"]
           EOF
 
-          ./scripts/port_forward_leader.sh self-healing 8087 &
-          PF_PID=$!
-          trap 'kill $PF_PID 2>/dev/null || true' EXIT
-          sleep 5
-
-          refused=0
-          for _ in $(seq 1 24); do
-            metrics=$(curl -sf http://localhost:8087/metrics || true)
-            if echo "$metrics" | grep -E 'remediations_total\{[^}]*result="brake_engaged"'; then
-              refused=1
+          pod_uid=""
+          for _ in $(seq 1 30); do
+            pod_uid=$(kc get pods -n test-app -l app=allowlist-neg \
+              -o jsonpath='{.items[0].metadata.uid}' 2>/dev/null || true)
+            if [[ -n "$pod_uid" ]]; then
               break
+            fi
+            sleep 2
+          done
+          test -n "$pod_uid" || { echo "allowlist-neg pod never appeared"; exit 1; }
+          echo "Pinned allowlist-neg pod uid=${pod_uid}"
+
+          # Service port-forward (not a fixed pod); scrapes restart PF on loss.
+          start_controller_port_forward self-healing 8087
+
+          saw_allowlist_refusal() {
+            local metrics logs
+            metrics=$(scrape_controller_metrics self-healing 8087)
+            if echo "$metrics" | grep -E 'remediations_total\{[^}]*result="brake_engaged"'; then
+              return 0
             fi
             if echo "$metrics" | grep -E 'brake_engaged\{[^}]*reason="namespace_not_allowed"'; then
-              refused=1
-              break
+              return 0
             fi
-            sleep 5
-          done
+            logs=$(controller_logs self-healing 400)
+            if echo "$logs" | grep -E 'namespace_not_allowed|not in allowlist' >/dev/null; then
+              return 0
+            fi
+            return 1
+          }
 
-          if [ "$refused" -ne 1 ]; then
-            echo "Expected allowlist refusal (brake) for namespace outside allowlist"
-            curl -s http://localhost:8087/metrics || true
-            minikube kubectl -- logs -n self-healing deploy/self-healing-controller --tail=80
+          if ! wait_until_timeout 120 saw_allowlist_refusal; then
+            echo "Expected allowlist refusal (brake metric or refusal log)"
+            scrape_controller_metrics self-healing 8087 || true
+            controller_logs self-healing 160
+            kc get pods -n test-app -l app=allowlist-neg -o wide || true
             exit 1
           fi
 
-          if echo "$(curl -sf http://localhost:8087/metrics || true)" | grep -E 'remediations_total\{[^}]*namespace="test-app"[^}]*result="success"'; then
-            echo "Pod outside allowlist must not be live-remediated"
+          metrics=$(scrape_controller_metrics self-healing 8087)
+          logs=$(controller_logs self-healing 400)
+          if echo "$metrics" | grep -E 'remediations_total\{[^}]*namespace="test-app"[^}]*result="success"'; then
+            echo "Pod outside allowlist must not be live-remediated (success metric present)"
+            exit 1
+          fi
+          if echo "$logs" | grep -E 'Restarted pod: test-app/allowlist-neg'; then
+            echo "Pod outside allowlist must not be live-remediated (restart log present)"
             exit 1
           fi
 
-          minikube kubectl -- delete deployment allowlist-neg -n test-app --wait=true
+          # Strict: the original pod must still exist (controller must not have deleted it).
+          still_uid=$(kc get pods -n test-app -l app=allowlist-neg \
+            -o jsonpath='{.items[0].metadata.uid}' 2>/dev/null || true)
+          if [[ -z "$still_uid" ]]; then
+            echo "Pod outside allowlist is gone; expected it to still exist"
+            kc get pods -n test-app -o wide || true
+            exit 1
+          fi
+          if [[ "$still_uid" != "$pod_uid" ]]; then
+            echo "Pod outside allowlist was deleted/replaced (uid ${pod_uid} -> ${still_uid})"
+            kc get pods -n test-app -l app=allowlist-neg -o wide || true
+            echo "$logs"
+            exit 1
+          fi
+
+          kc delete deployment allowlist-neg -n test-app --wait=true
           echo "NEGATIVE allowlist test passed (no delete outside allowlist)"
 
       - name: Enable live remediation for test-app
         run: |
           set -euo pipefail
+          # shellcheck source=scripts/ci_e2e_helpers.sh
+          source ./scripts/ci_e2e_helpers.sh
           echo "Enabling live remediation: DRY_RUN=false REMEDIATION_NAMESPACES=test-app"
-          minikube kubectl -- set env deployment/self-healing-controller -n self-healing \
+          kc set env deployment/self-healing-controller -n self-healing \
             DRY_RUN=false \
             REMEDIATION_NAMESPACES=test-app
-          minikube kubectl -- rollout status deployment/self-healing-controller -n self-healing --timeout=90s
+          wait_controller_rollout self-healing 120
 
       - name: Test bounded pod failure recovery
         run: |
