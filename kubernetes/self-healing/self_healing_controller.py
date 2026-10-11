@@ -16,7 +16,7 @@ import time
 import uuid
 from collections import defaultdict, deque
 from dataclasses import dataclass
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Dict, Optional, Set, Tuple
 
 import requests
@@ -206,12 +206,18 @@ class LeaseLock:
 
     @staticmethod
     def _parse_lease_time(value):
+        """Parse lease timestamps; Kubernetes MicroTime requires a timezone offset."""
         if value is None:
             return None
         if isinstance(value, datetime):
-            return value
-        text = str(value).replace("Z", "+00:00")
-        return datetime.fromisoformat(text)
+            dt = value
+        else:
+            text = str(value).strip().replace("Z", "+00:00")
+            # leaderelection passes str(datetime) with a space separator
+            dt = datetime.fromisoformat(text)
+        if dt.tzinfo is None:
+            dt = dt.replace(tzinfo=timezone.utc)
+        return dt
 
     def _to_lease_spec(self, election_record: LeaderElectionRecord):
         duration = None
