@@ -14,7 +14,7 @@ metadata:
   labels:
     app: self-healing-controller
 spec:
-  replicas: 1
+  replicas: 2
   selector:
     matchLabels:
       app: self-healing-controller
@@ -36,6 +36,14 @@ spec:
             - containerPort: 8080
               name: metrics
           env:
+            - name: POD_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.name
+            - name: POD_NAMESPACE
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.namespace
             - name: POD_FAILURE_THRESHOLD
               value: "3"
             - name: POD_RESTART_TIMEOUT
@@ -48,8 +56,14 @@ spec:
               value: "true"
             - name: HELM_ROLLBACK_TIMEOUT
               value: "300"
-            - name: KURED_INTEGRATION_ENABLED
+            - name: NODE_CORDON_ENABLED
               value: "true"
+            - name: LEADER_ELECTION_ENABLED
+              value: "true"
+            - name: POD_DELETE_GRACE_PERIOD_SECONDS
+              value: "30"
+            - name: REMEDIATION_BUDGET_PER_WORKLOAD
+              value: "3"
             - name: SLACK_NOTIFICATIONS_ENABLED
               value: "true"
             - name: SLACK_WEBHOOK_URL
@@ -122,17 +136,23 @@ metadata:
     app: self-healing-controller
 rules:
   - apiGroups: [""]
-    resources: ["pods", "nodes", "services", "endpoints", "events", "configmaps", "secrets"]
-    verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+    resources: ["pods"]
+    verbs: ["get", "list", "watch", "delete"]
+  - apiGroups: [""]
+    resources: ["nodes"]
+    verbs: ["get", "list", "watch", "patch"]
+  - apiGroups: [""]
+    resources: ["events"]
+    verbs: ["create"]
+  - apiGroups: [""]
+    resources: ["secrets"]
+    verbs: ["get", "list"]
   - apiGroups: ["apps"]
     resources: ["deployments", "daemonsets", "replicasets", "statefulsets"]
-    verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+    verbs: ["get", "list", "watch"]
   - apiGroups: ["batch"]
-    resources: ["jobs", "cronjobs"]
-    verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
-  - apiGroups: ["autoscaling"]
-    resources: ["horizontalpodautoscalers"]
-    verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+    resources: ["jobs"]
+    verbs: ["get", "list", "watch"]
 
 ---
 apiVersion: rbac.authorization.k8s.io/v1
@@ -145,6 +165,36 @@ roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: ClusterRole
   name: self-healing-controller
+subjects:
+  - kind: ServiceAccount
+    name: self-healing-controller
+    namespace: self-healing
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: self-healing-controller-leader
+  namespace: self-healing
+  labels:
+    app: self-healing-controller
+rules:
+  - apiGroups: ["coordination.k8s.io"]
+    resources: ["leases"]
+    verbs: ["get", "list", "watch", "create", "update", "patch"]
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: self-healing-controller-leader
+  namespace: self-healing
+  labels:
+    app: self-healing-controller
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: self-healing-controller-leader
 subjects:
   - kind: ServiceAccount
     name: self-healing-controller

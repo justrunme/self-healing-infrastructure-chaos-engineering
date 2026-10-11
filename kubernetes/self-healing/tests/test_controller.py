@@ -19,6 +19,25 @@ from self_healing_controller import (
 )
 
 
+def _owner_ref(kind, name, controller=True):
+    ref = MagicMock()
+    ref.kind = kind
+    ref.name = name
+    ref.controller = controller
+    return ref
+
+
+def _owned_pod(name="test-pod", namespace="test-ns", kind="ReplicaSet", owner="test-rs"):
+    pod = MagicMock()
+    pod.metadata.name = name
+    pod.metadata.namespace = namespace
+    pod.metadata.owner_references = [_owner_ref(kind, owner)]
+    pod.metadata.labels = {}
+    pod.metadata.annotations = {}
+    pod.status.phase = "Failed"
+    return pod
+
+
 class TestRemediationBudget:
     """Test cases for RemediationBudget"""
 
@@ -96,8 +115,11 @@ class TestSelfHealingController:
         with patch("self_healing_controller.config.load_incluster_config"):
             with patch("self_healing_controller.client.CoreV1Api"):
                 with patch("self_healing_controller.client.AppsV1Api"):
-                    controller = SelfHealingController()
-                    return controller
+                    with patch("self_healing_controller.client.CoordinationV1Api"):
+                        controller = SelfHealingController()
+                        controller.config["leader_election_enabled"] = False
+                        controller.is_leader = True
+                        return controller
 
     def test_load_config(self, controller):
         """Test configuration loading"""
@@ -113,10 +135,12 @@ class TestSelfHealingController:
         config = controller.remediation_config
 
         assert config.budget_per_namespace == 10
+        assert config.budget_per_workload == 3
         assert config.budget_window_seconds == 300
         assert config.cooldown_seconds == 60
         assert config.dry_run is False
         assert config.require_approval_for_dangerous is True
+        assert config.pod_delete_grace_period_seconds == 30
 
     def test_load_remediation_config_from_env(self):
         """Test remediation config from environment variables"""
@@ -124,6 +148,7 @@ class TestSelfHealingController:
             os.environ,
             {
                 "REMEDIATION_BUDGET_PER_NAMESPACE": "5",
+                "REMEDIATION_BUDGET_PER_WORKLOAD": "2",
                 "REMEDIATION_BUDGET_WINDOW_SECONDS": "600",
                 "REMEDIATION_COOLDOWN_SECONDS": "120",
                 "DRY_RUN": "true",
@@ -133,14 +158,16 @@ class TestSelfHealingController:
             with patch("self_healing_controller.config.load_incluster_config"):
                 with patch("self_healing_controller.client.CoreV1Api"):
                     with patch("self_healing_controller.client.AppsV1Api"):
-                        controller = SelfHealingController()
-                        config = controller.remediation_config
+                        with patch("self_healing_controller.client.CoordinationV1Api"):
+                            controller = SelfHealingController()
+                            config = controller.remediation_config
 
-                        assert config.budget_per_namespace == 5
-                        assert config.budget_window_seconds == 600
-                        assert config.cooldown_seconds == 120
-                        assert config.dry_run is True
-                        assert config.require_approval_for_dangerous is False
+                            assert config.budget_per_namespace == 5
+                            assert config.budget_per_workload == 2
+                            assert config.budget_window_seconds == 600
+                            assert config.cooldown_seconds == 120
+                            assert config.dry_run is True
+                            assert config.require_approval_for_dangerous is False
 
     def test_is_pod_failing_failed_state(self, controller):
         """Test pod failure detection for failed state"""
@@ -216,15 +243,44 @@ class TestSelfHealingController:
     def test_is_helm_managed_pod_true(self, controller):
         """Test Helm managed pod detection when true"""
         pod = MagicMock()
-        pod.metadata.labels = {"app.kubernetes.io/managed-by": "Helm"}
+        pod.metadata.namespace = "test-ns"
+        pod.metadata.labels = {
+            "app.kubernetes.io/managed-by": "Helm",
+            "app.kubernetes.io/instance": "my-release",
+        }
+        pod.metadata.annotations = {"meta.helm.sh/release-name": "my-release"}
+        controller._helm_release_exists = MagicMock(return_value=True)
 
         result = controller._is_helm_managed_pod(pod)
         assert result is True
+        controller._helm_release_exists.assert_called_once_with("test-ns", "my-release")
+
+    def test_is_helm_managed_pod_rejects_non_helm_managed_by(self, controller):
+        """Any managed-by value other than Helm must not trigger rollback."""
+        pod = MagicMock()
+        pod.metadata.labels = {"app.kubernetes.io/managed-by": "kubectl"}
+        pod.metadata.annotations = {"meta.helm.sh/release-name": "my-release"}
+
+        assert controller._is_helm_managed_pod(pod) is False
+
+    def test_is_helm_managed_pod_requires_release_secret(self, controller):
+        """Helm label alone is insufficient without a release secret."""
+        pod = MagicMock()
+        pod.metadata.namespace = "test-ns"
+        pod.metadata.labels = {
+            "app.kubernetes.io/managed-by": "Helm",
+            "app.kubernetes.io/instance": "my-release",
+        }
+        pod.metadata.annotations = {"meta.helm.sh/release-name": "my-release"}
+        controller._helm_release_exists = MagicMock(return_value=False)
+
+        assert controller._is_helm_managed_pod(pod) is False
 
     def test_is_helm_managed_pod_false(self, controller):
         """Test Helm managed pod detection when false"""
         pod = MagicMock()
         pod.metadata.labels = {"app": "test"}
+        pod.metadata.annotations = {}
 
         result = controller._is_helm_managed_pod(pod)
         assert result is False
@@ -253,51 +309,109 @@ class TestSelfHealingController:
 
     def test_can_remediate_within_budget(self, controller):
         """Test remediation allowed within budget"""
-        can_remediate, reason = controller._can_remediate("test-ns", "test-ns/pod1", "restart_pod")
+        can_remediate, reason = controller._can_remediate("test-ns", "test-ns/Deployment/app", "restart_pod")
         assert can_remediate is True
         assert reason is None
 
     def test_can_remediate_budget_exhausted(self, controller):
-        """Test remediation blocked when budget exhausted"""
+        """Test remediation blocked when namespace budget exhausted"""
         namespace = "test-ns"
         controller.remediation_config.budget_per_namespace = 2
+        controller.namespace_budgets[namespace] = RemediationBudget(2, 300)
 
-        controller._can_remediate(namespace, f"{namespace}/pod1", "restart_pod")
-        controller._record_remediation(namespace, f"{namespace}/pod1", "restart_pod", "success")
+        controller._record_remediation(namespace, f"{namespace}/Deployment/a", "restart_pod", "success")
+        controller._record_remediation(namespace, f"{namespace}/Deployment/b", "restart_pod", "success")
 
-        controller._can_remediate(namespace, f"{namespace}/pod2", "restart_pod")
-        controller._record_remediation(namespace, f"{namespace}/pod2", "restart_pod", "success")
-
-        can_remediate, reason = controller._can_remediate(namespace, f"{namespace}/pod3", "restart_pod")
+        can_remediate, reason = controller._can_remediate(namespace, f"{namespace}/Deployment/c", "restart_pod")
         assert can_remediate is False
         assert "budget_exhausted" in reason
+
+    def test_can_remediate_workload_budget_exhausted(self, controller):
+        """Test remediation blocked when per-workload budget exhausted"""
+        namespace = "test-ns"
+        workload = f"{namespace}/Deployment/app"
+        controller.remediation_config.budget_per_workload = 1
+        controller.workload_budgets[workload] = RemediationBudget(1, 300)
+
+        controller._record_remediation(namespace, workload, "restart_pod", "success")
+
+        can_remediate, reason = controller._can_remediate(namespace, workload, "restart_pod")
+        assert can_remediate is False
+        assert "workload" in reason
 
     def test_can_remediate_cooldown_active(self, controller):
         """Test remediation blocked during cooldown"""
         namespace = "test-ns"
-        obj_key = f"{namespace}/pod1"
+        workload = f"{namespace}/Deployment/app"
 
-        controller._can_remediate(namespace, obj_key, "restart_pod")
-        controller._record_remediation(namespace, obj_key, "restart_pod", "success")
+        controller._record_remediation(namespace, workload, "restart_pod", "success")
 
-        can_remediate, reason = controller._can_remediate(namespace, obj_key, "restart_pod")
+        can_remediate, reason = controller._can_remediate(namespace, workload, "restart_pod")
         assert can_remediate is False
         assert "cooldown_active" in reason
 
+    def test_brake_does_not_consume_budget_or_cooldown(self, controller):
+        """Reproduce starvation bug: brake events must not burn budget/cooldown.
+
+        Old bug: crash-loop MODIFIED events recorded brake_engaged via
+        _record_remediation, permanently resetting cooldown and exhausting the
+        namespace budget so other workloads starved.
+        """
+        namespace = "test-ns"
+        crashing = f"{namespace}/Deployment/crash"
+        healthy = f"{namespace}/Deployment/healthy"
+        controller.remediation_config.budget_per_namespace = 3
+        controller.namespace_budgets[namespace] = RemediationBudget(3, 300)
+        controller.remediation_config.budget_per_workload = 5
+        controller.workload_budgets[crashing] = RemediationBudget(5, 300)
+        controller.workload_budgets[healthy] = RemediationBudget(5, 300)
+
+        # One real remediation on the crashing workload starts cooldown
+        controller._record_remediation(namespace, crashing, "restart_crash_loop", "success")
+        remaining_before = controller.namespace_budgets[namespace].remaining()
+        cooldown_before = controller.object_cooldown.last_timestamp(crashing)
+
+        # Simulate 50 brake engagements (old code would burn budget + reset cooldown)
+        for _ in range(50):
+            controller._record_brake(namespace, crashing, "restart_crash_loop", "cooldown_active")
+
+        assert controller.namespace_budgets[namespace].remaining() == remaining_before
+        assert controller.object_cooldown.last_timestamp(crashing) == cooldown_before
+
+        # Another workload in the same namespace must still be remediable
+        can_remediate, reason = controller._can_remediate(namespace, healthy, "restart_pod")
+        assert can_remediate is True
+        assert reason is None
+
+    @patch("self_healing_controller.requests.post")
+    def test_brake_rate_limits_slack(self, mock_post, controller):
+        """Brake Slack alerts are rate-limited per workload."""
+        mock_response = MagicMock()
+        mock_response.status_code = 200
+        mock_post.return_value = mock_response
+        controller.config["slack_notifications_enabled"] = True
+        controller.config["slack_webhook_url"] = "https://hooks.slack.com/test"
+        controller.remediation_config.slack_brake_rate_limit_seconds = 60
+
+        for _ in range(50):
+            controller._send_slack_notification("Brake", "msg", rate_key="brake:ns/Deployment/x")
+
+        assert mock_post.call_count == 1
+
     def test_is_dangerous_action(self, controller):
         """Test dangerous action detection"""
-        assert controller._is_dangerous_action("node_reboot") is True
+        assert controller._is_dangerous_action("node_cordon") is True
         assert controller._is_dangerous_action("node_drain") is True
         assert controller._is_dangerous_action("restart_pod") is False
 
     def test_check_approval_with_annotation(self, controller):
         """Test approval check with annotation"""
         node = MagicMock()
-        node.metadata.annotations = {"self-healing.justrunme.com/approve-reboot": "true"}
+        node.metadata.annotations = {"self-healing.justrunme.com/approve-cordon": "true"}
 
         controller.k8s_client.read_node = MagicMock(return_value=node)
 
-        result = controller._check_approval("node/test-node", "node_reboot")
+        result = controller._check_approval("node/test-node", "node_cordon")
         assert result is True
 
     def test_check_approval_without_annotation(self, controller):
@@ -307,24 +421,62 @@ class TestSelfHealingController:
 
         controller.k8s_client.read_node = MagicMock(return_value=node)
 
-        result = controller._check_approval("node/test-node", "node_reboot")
+        result = controller._check_approval("node/test-node", "node_cordon")
         assert result is False
 
     def test_check_approval_disabled(self, controller):
         """Test approval check when disabled"""
         controller.remediation_config.require_approval_for_dangerous = False
 
-        result = controller._check_approval("node/test-node", "node_reboot")
+        result = controller._check_approval("node/test-node", "node_cordon")
         assert result is True
+
+    def test_resolve_owner_bare_pod(self, controller):
+        """Bare pods have no owner chain."""
+        pod = MagicMock()
+        pod.metadata.owner_references = []
+        assert controller._resolve_owner(pod) is None
+
+    def test_resolve_owner_replicaset_to_deployment(self, controller):
+        """ReplicaSet owner is walked up to Deployment."""
+        pod = _owned_pod(kind="ReplicaSet", owner="app-rs")
+        rs = MagicMock()
+        rs.metadata.owner_references = [_owner_ref("Deployment", "app")]
+        controller.apps_v1.read_namespaced_replica_set = MagicMock(return_value=rs)
+
+        assert controller._resolve_owner(pod) == ("test-ns", "Deployment", "app")
+
+    def test_handle_pod_failure_skips_bare_pod(self, controller):
+        """Bare pods are skipped with event + metric, never deleted."""
+        pod = MagicMock()
+        pod.metadata.name = "bare-pod"
+        pod.metadata.namespace = "test-ns"
+        pod.metadata.owner_references = []
+        pod.status.phase = "Failed"
+
+        controller._handle_pod_failure(pod)
+
+        controller.k8s_client.delete_namespaced_pod.assert_not_called()
+        controller.k8s_client.create_namespaced_event.assert_called()
+
+    def test_restart_pod_uses_grace_period(self, controller):
+        """Deletion must use configured grace period (no force-delete)."""
+        pod = _owned_pod()
+        controller.remediation_config.pod_delete_grace_period_seconds = 30
+
+        assert controller._restart_pod(pod) is True
+        controller.k8s_client.delete_namespaced_pod.assert_called_once()
+        kwargs = controller.k8s_client.delete_namespaced_pod.call_args.kwargs
+        assert kwargs["grace_period_seconds"] == 30
+        assert kwargs["grace_period_seconds"] != 0
 
     def test_handle_pod_failure_dry_run(self, controller):
         """Test pod failure handling in dry run mode"""
         controller.remediation_config.dry_run = True
-
-        pod = MagicMock()
-        pod.metadata.name = "test-pod"
-        pod.metadata.namespace = "test-ns"
-        pod.status.phase = "Failed"
+        pod = _owned_pod()
+        rs = MagicMock()
+        rs.metadata.owner_references = [_owner_ref("Deployment", "test")]
+        controller.apps_v1.read_namespaced_replica_set = MagicMock(return_value=rs)
 
         controller._handle_pod_failure(pod)
 
@@ -334,17 +486,17 @@ class TestSelfHealingController:
         """Test pod failure handling when budget exhausted"""
         namespace = "test-ns"
         controller.remediation_config.budget_per_namespace = 1
+        controller.namespace_budgets[namespace] = RemediationBudget(1, 300)
 
-        pod1 = MagicMock()
-        pod1.metadata.name = "pod1"
-        pod1.metadata.namespace = namespace
+        rs = MagicMock()
+        rs.metadata.owner_references = [_owner_ref("Deployment", "app1")]
+        controller.apps_v1.read_namespaced_replica_set = MagicMock(return_value=rs)
 
-        pod2 = MagicMock()
-        pod2.metadata.name = "pod2"
-        pod2.metadata.namespace = namespace
-
+        pod1 = _owned_pod(name="pod1", namespace=namespace, owner="rs1")
         controller._handle_pod_failure(pod1)
 
+        rs.metadata.owner_references = [_owner_ref("Deployment", "app2")]
+        pod2 = _owned_pod(name="pod2", namespace=namespace, owner="rs2")
         controller.k8s_client.delete_namespaced_pod.reset_mock()
         controller._handle_pod_failure(pod2)
 
@@ -360,19 +512,31 @@ class TestSelfHealingController:
 
         controller._handle_node_failure(node)
 
-        controller.k8s_client.patch_node.assert_not_called()
+        # Must not cordon without approval
+        patch_calls = controller.k8s_client.patch_node.call_args_list
+        for call in patch_calls:
+            body = call.kwargs.get("body") or (call.args[1] if len(call.args) > 1 else None)
+            if isinstance(body, dict) and body.get("spec", {}).get("unschedulable") is True:
+                pytest.fail("Node was cordoned without approval")
 
-    def test_handle_node_failure_with_approval(self, controller):
-        """Test node failure handling with approval"""
+    def test_handle_node_failure_with_approval_cordons(self, controller):
+        """Approved NotReady handling cordons the node (no fake kured annotation)."""
         node = MagicMock()
         node.metadata.name = "test-node"
-        node.metadata.annotations = {"self-healing.justrunme.com/approve-reboot": "true"}
+        node.metadata.annotations = {"self-healing.justrunme.com/approve-cordon": "true"}
 
         controller.k8s_client.read_node = MagicMock(return_value=node)
+        controller._consume_approval = MagicMock(return_value=True)
 
         controller._handle_node_failure(node)
 
-        controller.k8s_client.patch_node.assert_called_once()
+        controller.k8s_client.patch_node.assert_called()
+        body = controller.k8s_client.patch_node.call_args.kwargs.get("body")
+        if body is None:
+            body = controller.k8s_client.patch_node.call_args[1].get("body")
+        assert body == {"spec": {"unschedulable": True}}
+        # Must not set the obsolete kured node-lock annotation on the Node
+        assert "weave.works/kured-node-lock" not in str(body)
 
     @patch("self_healing_controller.requests.post")
     def test_send_slack_notification_success(self, mock_post, controller):
@@ -406,6 +570,7 @@ class TestSelfHealingController:
         assert "running" in metrics
         assert "dry_run" in metrics
         assert "budget_per_namespace" in metrics
+        assert "budget_per_workload" in metrics
         assert "cooldown_seconds" in metrics
 
     @patch("self_healing_controller.subprocess.run")
@@ -416,9 +581,13 @@ class TestSelfHealingController:
         mock_run.return_value = mock_result
 
         pod = MagicMock()
-        pod.metadata.labels = {"app.kubernetes.io/instance": "test-release"}
+        pod.metadata.labels = {
+            "app.kubernetes.io/managed-by": "Helm",
+            "app.kubernetes.io/instance": "test-release",
+        }
+        pod.metadata.annotations = {"meta.helm.sh/release-name": "test-release"}
         pod.metadata.namespace = "test-namespace"
-
+        controller._helm_release_exists = MagicMock(return_value=True)
         controller.config["helm_rollback_enabled"] = True
 
         controller._handle_helm_pod_failure(pod)
@@ -431,22 +600,55 @@ class TestSelfHealingController:
         )
 
     @patch("self_healing_controller.subprocess.run")
-    def test_helm_rollback_budget_exhausted(self, mock_run, controller):
-        """Test Helm rollback blocked by budget"""
-        namespace = "test-namespace"
-        controller.remediation_config.budget_per_namespace = 1
-
+    def test_helm_rollback_skipped_without_release(self, mock_run, controller):
+        """Helm rollback must not run when release secret is missing."""
         pod = MagicMock()
-        pod.metadata.labels = {"app.kubernetes.io/instance": "test-release"}
-        pod.metadata.namespace = namespace
-
+        pod.metadata.labels = {
+            "app.kubernetes.io/managed-by": "Helm",
+            "app.kubernetes.io/instance": "test-release",
+        }
+        pod.metadata.annotations = {"meta.helm.sh/release-name": "test-release"}
+        pod.metadata.namespace = "test-namespace"
+        controller._helm_release_exists = MagicMock(return_value=False)
         controller.config["helm_rollback_enabled"] = True
-
-        controller._record_remediation(namespace, f"{namespace}/other", "restart_pod", "success")
 
         controller._handle_helm_pod_failure(pod)
 
         mock_run.assert_not_called()
+
+    @patch("self_healing_controller.subprocess.run")
+    def test_helm_rollback_budget_exhausted(self, mock_run, controller):
+        """Test Helm rollback blocked by budget"""
+        namespace = "test-namespace"
+        controller.remediation_config.budget_per_namespace = 1
+        controller.namespace_budgets[namespace] = RemediationBudget(1, 300)
+
+        pod = MagicMock()
+        pod.metadata.labels = {
+            "app.kubernetes.io/managed-by": "Helm",
+            "app.kubernetes.io/instance": "test-release",
+        }
+        pod.metadata.annotations = {"meta.helm.sh/release-name": "test-release"}
+        pod.metadata.namespace = namespace
+        controller._helm_release_exists = MagicMock(return_value=True)
+        controller.config["helm_rollback_enabled"] = True
+
+        controller._record_remediation(namespace, f"{namespace}/Deployment/other", "restart_pod", "success")
+
+        controller._handle_helm_pod_failure(pod)
+
+        mock_run.assert_not_called()
+
+    def test_helm_release_exists_via_secret(self, controller):
+        """Helm release detection looks for helm.sh/release.v1 secrets."""
+        secret = MagicMock()
+        secret.type = "helm.sh/release.v1"
+        secret.metadata.name = "sh.helm.release.v1.demo.v1"
+        result = MagicMock()
+        result.items = [secret]
+        controller.k8s_client.list_namespaced_secret = MagicMock(return_value=result)
+
+        assert controller._helm_release_exists("demo-ns", "demo") is True
 
 
 class TestControllerIntegration:
@@ -462,13 +664,15 @@ class TestControllerIntegration:
         """Test controller initialization"""
         with patch("self_healing_controller.config.load_incluster_config"):
             with patch("self_healing_controller.client.AppsV1Api"):
-                controller = SelfHealingController()
-                assert controller is not None
-                assert hasattr(controller, "config")
-                assert hasattr(controller, "remediation_config")
-                assert hasattr(controller, "k8s_client")
-                assert hasattr(controller, "namespace_budgets")
-                assert hasattr(controller, "object_cooldown")
+                with patch("self_healing_controller.client.CoordinationV1Api"):
+                    controller = SelfHealingController()
+                    assert controller is not None
+                    assert hasattr(controller, "config")
+                    assert hasattr(controller, "remediation_config")
+                    assert hasattr(controller, "k8s_client")
+                    assert hasattr(controller, "namespace_budgets")
+                    assert hasattr(controller, "workload_budgets")
+                    assert hasattr(controller, "object_cooldown")
 
     def test_config_environment_variables(self):
         """Test configuration from environment variables"""
@@ -484,14 +688,15 @@ class TestControllerIntegration:
             with patch("self_healing_controller.config.load_incluster_config"):
                 with patch("self_healing_controller.client.CoreV1Api"):
                     with patch("self_healing_controller.client.AppsV1Api"):
-                        controller = SelfHealingController()
-                        config = controller._load_config()
-                        assert config["pod_failure_threshold"] == 5
-                        assert config["slack_notifications_enabled"] is False
+                        with patch("self_healing_controller.client.CoordinationV1Api"):
+                            controller = SelfHealingController()
+                            config = controller._load_config()
+                            assert config["pod_failure_threshold"] == 5
+                            assert config["slack_notifications_enabled"] is False
 
-                        remediation_config = controller.remediation_config
-                        assert remediation_config.budget_per_namespace == 20
-                        assert remediation_config.dry_run is True
+                            remediation_config = controller.remediation_config
+                            assert remediation_config.budget_per_namespace == 20
+                            assert remediation_config.dry_run is True
 
 
 class TestWatchPattern:
@@ -503,8 +708,9 @@ class TestWatchPattern:
         with patch("self_healing_controller.config.load_incluster_config"):
             with patch("self_healing_controller.client.CoreV1Api"):
                 with patch("self_healing_controller.client.AppsV1Api"):
-                    controller = SelfHealingController()
-                    return controller
+                    with patch("self_healing_controller.client.CoordinationV1Api"):
+                        controller = SelfHealingController()
+                        return controller
 
     def test_should_skip_pod_system_namespace(self, controller):
         """Test skipping system namespace pods"""
