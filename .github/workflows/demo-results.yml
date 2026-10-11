@@ -23,12 +23,21 @@ jobs:
           minikube image load self-healing-controller:latest
       - name: Deploy controller and test-app
         run: |
-          minikube kubectl -- create namespace self-healing || true
-          minikube kubectl -- apply -f kubernetes/self-healing/slack-secret.yaml
-          minikube kubectl -- apply -f kubernetes/self-healing/deployment.yaml
-          minikube kubectl -- apply -f kubernetes/test-app/test-app.yaml
-          minikube kubectl -- rollout status deployment/self-healing-controller -n self-healing --timeout=120s
-          minikube kubectl -- rollout status deployment/test-app -n test-app --timeout=120s
+          set -euo pipefail
+          # shellcheck source=scripts/ci_e2e_helpers.sh
+          source ./scripts/ci_e2e_helpers.sh
+          kc create namespace self-healing || true
+          kc apply -f kubernetes/self-healing/slack-secret.yaml
+          kc apply -f kubernetes/self-healing/deployment.yaml
+          kc apply -f kubernetes/test-app/test-app.yaml
+          wait_controller_rollout self-healing 120
+          kc rollout status deployment/test-app -n test-app --timeout=120s
+          # Demo records live remediation; opt in explicitly
+          kc set env deployment/self-healing-controller -n self-healing \
+            DRY_RUN=false \
+            REMEDIATION_NAMESPACES=test-app \
+            POD_FAILURE_THRESHOLD=1
+          wait_controller_rollout self-healing 120
       - name: Record fault-inject remediation demo
         run: |
           mkdir -p docs/assets

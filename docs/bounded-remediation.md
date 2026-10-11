@@ -8,7 +8,8 @@ Traditional self-healing systems can cause cascading failures when they remediat
 
 - **Budget Limits**: Maximum remediations per namespace within a sliding window
 - **Cooldown Periods**: Minimum time between remediations of the same object
-- **Dry-Run Mode**: Test remediation logic without making changes
+- **Dry-Run Mode (default on)**: Observe intended remediations without mutating the cluster
+- **Namespace Allowlist**: Live mutations require an explicit `REMEDIATION_NAMESPACES` allowlist
 - **Approval Gates**: Require explicit approval for dangerous actions
 - **Observability**: Comprehensive Prometheus metrics for monitoring
 
@@ -44,17 +45,21 @@ The controller will not remediate the same object again until the cooldown expir
 - Allows time for natural recovery
 - Reduces unnecessary churn
 
-### 3. Dry-Run Mode
+### 3. Dry-Run Mode (default)
 
-In dry-run mode, the controller detects issues and logs what it would do, but makes no actual changes.
+Dry-run is **enabled by default**. The controller detects issues and records dry-run events/metrics, but makes no cluster mutations.
 
 **Use cases:**
+- Safe fresh installs
 - Testing new remediation policies
 - Validating configuration changes
 - Auditing remediation decisions
-- Training and demonstration
 
-### 4. Approval Gates
+### 4. Namespace Allowlist
+
+Live remediation additionally requires a non-empty `REMEDIATION_NAMESPACES` allowlist. Without it, the controller refuses live actions even when `DRY_RUN=false`.
+
+### 5. Approval Gates
 
 Dangerous actions (node reboot, node drain) require explicit approval via Kubernetes annotations.
 
@@ -79,8 +84,32 @@ Configure the brake system via environment variables in the controller deploymen
 | `REMEDIATION_BUDGET_PER_NAMESPACE` | `10` | Maximum remediations per namespace in the time window |
 | `REMEDIATION_BUDGET_WINDOW_SECONDS` | `300` | Sliding time window in seconds (5 minutes) |
 | `REMEDIATION_COOLDOWN_SECONDS` | `60` | Cooldown period per object in seconds |
-| `DRY_RUN` | `false` | Enable dry-run mode (true/false) |
+| `DRY_RUN` | `true` | Dry-run mode (true/false). Default `true` so fresh installs do not mutate |
+| `REMEDIATION_NAMESPACES` | `""` (empty) | Comma-separated namespace allowlist required for live remediation |
 | `REQUIRE_APPROVAL_FOR_DANGEROUS` | `true` | Require approval for dangerous actions (true/false) |
+
+### Enabling Live Remediation
+
+Live mutations require **both**:
+
+1. `DRY_RUN=false`
+2. A non-empty `REMEDIATION_NAMESPACES` allowlist that includes the target namespace
+
+```bash
+kubectl set env deployment/self-healing-controller -n self-healing \
+  DRY_RUN=false \
+  REMEDIATION_NAMESPACES=test-app,my-workload-ns
+```
+
+If `DRY_RUN=false` but the allowlist is empty (or the pod's namespace is outside it), the controller refuses the live action, logs the refusal, and records a brake/skip — the pod is not deleted.
+
+Helm values defaults (`helm-charts/self-healing-controller/values.yaml`):
+
+```yaml
+config:
+  dryRun: true
+  remediationNamespaces: []
+```
 
 ### Example Deployment
 
@@ -105,7 +134,9 @@ spec:
         - name: REMEDIATION_COOLDOWN_SECONDS
           value: "120"
         - name: DRY_RUN
-          value: "false"
+          value: "true"
+        - name: REMEDIATION_NAMESPACES
+          value: ""
         - name: REQUIRE_APPROVAL_FOR_DANGEROUS
           value: "true"
 ```
@@ -258,13 +289,7 @@ groups:
 
 ## Testing in Dry-Run Mode
 
-### Enable Dry-Run Mode
-
-```bash
-kubectl set env deployment/self-healing-controller \
-  -n self-healing \
-  DRY_RUN=true
-```
+Dry-run is the default. A fresh install already records intended actions without deleting pods.
 
 ### Monitor Dry-Run Logs
 
@@ -276,24 +301,33 @@ kubectl logs -n self-healing -f deployment/self-healing-controller \
 **Example output:**
 
 ```
-2026-10-10 11:45:23 - __main__ - INFO - 🔍 DRY RUN: Would restart pod test-ns/failing-pod
-2026-10-10 11:45:45 - __main__ - INFO - 🔍 DRY RUN: Would rollback Helm release my-app
-2026-10-10 11:46:12 - __main__ - INFO - 🔍 DRY RUN: Would trigger reboot for node worker-1
+2026-10-10 11:45:23 - __main__ - INFO - DRY RUN: Would restart pod test-ns/failing-pod
+2026-10-10 11:45:45 - __main__ - INFO - DRY RUN: Would rollback Helm release my-app
+2026-10-10 11:46:12 - __main__ - INFO - DRY RUN: Would cordon node worker-1
 ```
 
 ### Verify Metrics in Dry-Run
 
 ```bash
 kubectl port-forward -n self-healing svc/self-healing-controller 8080:8080 &
-curl -s http://localhost:8080/metrics | grep 'dry_run'
+curl -s http://localhost:8080/metrics | grep 'result="dry_run"'
 ```
 
-### Disable Dry-Run Mode
+### Enable Live Remediation (explicit)
 
 ```bash
 kubectl set env deployment/self-healing-controller \
   -n self-healing \
-  DRY_RUN=false
+  DRY_RUN=false \
+  REMEDIATION_NAMESPACES=test-app
+```
+
+Re-enable dry-run (or clear the allowlist) to stop live mutations:
+
+```bash
+kubectl set env deployment/self-healing-controller \
+  -n self-healing \
+  DRY_RUN=true
 ```
 
 ## Best Practices
@@ -310,13 +344,12 @@ REMEDIATION_COOLDOWN_SECONDS: "120"
 
 ### 2. Test with Dry-Run
 
-Always test new configurations in dry-run mode first:
+Always validate in dry-run (the default) before enabling live remediation:
 
-1. Enable `DRY_RUN=true`
-2. Deploy configuration
-3. Monitor logs and metrics
-4. Verify expected behavior
-5. Disable dry-run mode
+1. Deploy with `DRY_RUN=true` (default) and empty allowlist
+2. Monitor logs and `result="dry_run"` metrics
+3. Verify expected behavior
+4. Enable live mode only for known namespaces: `DRY_RUN=false` + `REMEDIATION_NAMESPACES=...`
 
 ### 3. Monitor Brake Engagement
 
@@ -394,16 +427,17 @@ curl -s http://localhost:8080/metrics | grep brake_engaged
 2. Disable approval requirement (if appropriate): `REQUIRE_APPROVAL_FOR_DANGEROUS=false`
 3. Review node failure detection thresholds
 
-### Problem: Too Many Dry-Run Logs
+### Problem: Too Many Dry-Run Logs / No Live Remediation
 
 **Symptoms:**
 - Controller logs show many "DRY RUN" messages
 - No actual remediation happening
+- Or logs say allowlist is empty / namespace not allowed
 
 **Solutions:**
-1. Verify dry-run mode is disabled: `DRY_RUN=false`
-2. Check deployment configuration
-3. Restart controller after configuration change
+1. Set `DRY_RUN=false` **and** a non-empty `REMEDIATION_NAMESPACES` that includes the target namespace
+2. Check deployment/Helm values (`dryRun`, `remediationNamespaces`)
+3. Restart/rollout the controller after configuration change
 
 ## Architecture
 

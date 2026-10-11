@@ -65,6 +65,11 @@ config:
   remediationBudgetPerWorkload: 3
   podDeleteGracePeriodSeconds: 30
 
+  # Safe defaults: dry-run on and empty allowlist so a fresh install does not mutate.
+  # Live remediation requires dryRun=false AND a non-empty remediationNamespaces list.
+  dryRun: true
+  remediationNamespaces: []
+
   # Slack notifications
   slackNotificationsEnabled: true
   slackWebhookUrl: ""
