@@ -12,6 +12,8 @@ Self-healing and chaos patterns for calmer incident response on Kubernetes.
 [![Case study](https://img.shields.io/badge/case-justrunme.com-111111)](https://justrunme.com/cases/self-healing-infrastructure/)
 [![OpenSSF Scorecard](https://api.securityscorecards.dev/projects/github.com/justrunme/self-healing-infrastructure-chaos-engineering/badge)](https://securityscorecards.dev/viewer/?uri=github.com/justrunme/self-healing-infrastructure-chaos-engineering)
 
+Evidence: [docs/EVIDENCE.md](docs/EVIDENCE.md)
+
 Case study: [Self-Healing Infrastructure](https://justrunme.com/cases/self-healing-infrastructure/) · [Andrey Lesnikov](https://justrunme.com/)
 
 ## What it does
