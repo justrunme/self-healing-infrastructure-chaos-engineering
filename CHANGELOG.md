@@ -5,6 +5,29 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.2.0] - 2026-10-11
+
+Version numbering continues the v2.x line after legacy `v2.1.1` (Jul 2025).
+`v1.1.0` (Oct 2026) remains a valid prior release on the interim 1.x track;
+this release re-aligns the newest tag with the historical 2.x series.
+
+### Added
+- OpenSSF Scorecard workflow and release supply-chain controls: keyless Cosign signing, SPDX SBOM, and build provenance attestations
+- Remediation demo recording and measured time-to-remediation (20.1s) with weekly/manual `demo-results` workflow
+- `docs/EVIDENCE.md` claim/status standard with README link
+- Contributing guide and GitHub issue/PR templates
+- Security policy, LICENSE, and Dependabot configuration
+
+### Fixed
+- Remediation safety: brake and skip paths no longer consume namespace/workload budget or reset cooldowns
+- Owner-aware deletes: only controller-owned pods are deleted gracefully; bare pods are skipped with an Event and metric
+- Helm rollback only when a real Helm release (secret + annotation) exists
+- Replace ineffective kured Node annotation with an approved cordon
+- Lease leader election with 2 replicas and least-privilege RBAC (no cluster-wide secrets or apps write)
+
+### Changed
+- README header refreshed for consistent pinned layout
+
 ## [1.1.0] - 2026-10-10
 
 ### Added
