@@ -48,9 +48,24 @@ wait_controller_rollout() {
   return 1
 }
 
+# Resolve the current Lease holder pod name (empty if none / not ready).
+controller_leader_pod() {
+  local ns="${1:-self-healing}"
+  local lease="${2:-self-healing-controller}"
+  local holder
+  holder=$(kc get lease "$lease" -n "$ns" -o jsonpath='{.spec.holderIdentity}' 2>/dev/null || true)
+  if [[ -z "$holder" ]]; then
+    return 0
+  fi
+  if kc get pod "$holder" -n "$ns" >/dev/null 2>&1; then
+    echo "$holder"
+  fi
+}
+
 PF_PID=""
 PF_PORT=""
 PF_NS=""
+PF_TARGET=""
 
 stop_controller_port_forward() {
   if [[ -n "${PF_PID:-}" ]]; then
@@ -58,12 +73,13 @@ stop_controller_port_forward() {
     wait "$PF_PID" 2>/dev/null || true
   fi
   PF_PID=""
+  PF_TARGET=""
   if [[ -n "${PF_PORT:-}" ]]; then
     pkill -f "port-forward.*${PF_PORT}:8080" 2>/dev/null || true
   fi
 }
 
-# Port-forward to the Service (not a fixed pod). Restarts cleanly on demand.
+# Prefer the Lease holder; fall back to the Service. Re-resolves on restart.
 start_controller_port_forward() {
   local ns="${1:-self-healing}"
   local local_port="${2:-8080}"
@@ -73,26 +89,51 @@ start_controller_port_forward() {
   PF_NS="$ns"
   PF_PORT="$local_port"
 
-  local log="/tmp/pf-controller-${local_port}.log"
+  local leader target log
+  leader=$(controller_leader_pod "$ns" "$svc" || true)
+  if [[ -n "$leader" ]]; then
+    target="pod/${leader}"
+  else
+    target="svc/${svc}"
+  fi
+  PF_TARGET="$target"
+
+  log="/tmp/pf-controller-${local_port}.log"
   : >"$log"
-  kc port-forward -n "$ns" "svc/${svc}" "${local_port}:8080" >"$log" 2>&1 &
+  echo "Port-forwarding ${target} -> localhost:${local_port}" >&2
+  kc port-forward -n "$ns" "$target" "${local_port}:8080" >"$log" 2>&1 &
   PF_PID=$!
 
   for _ in $(seq 1 40); do
     if ! kill -0 "$PF_PID" 2>/dev/null; then
-      echo "Port-forward exited early; restarting..." >&2
+      echo "Port-forward exited early; re-resolving target..." >&2
       cat "$log" >&2 || true
-      kc port-forward -n "$ns" "svc/${svc}" "${local_port}:8080" >"$log" 2>&1 &
+      leader=$(controller_leader_pod "$ns" "$svc" || true)
+      if [[ -n "$leader" ]]; then
+        target="pod/${leader}"
+      else
+        target="svc/${svc}"
+      fi
+      PF_TARGET="$target"
+      kc port-forward -n "$ns" "$target" "${local_port}:8080" >"$log" 2>&1 &
       PF_PID=$!
     fi
     if curl -sf "http://127.0.0.1:${local_port}/health" >/dev/null 2>&1; then
-      echo "Port-forward ready: svc/${svc} -> localhost:${local_port}"
-      return 0
+      # Prefer leader metrics when available.
+      if curl -sf "http://127.0.0.1:${local_port}/metrics" 2>/dev/null | grep -q 'self_healing_is_leader 1'; then
+        echo "Port-forward ready on leader via ${PF_TARGET}"
+        return 0
+      fi
+      # Health works but not leader yet — keep waiting a bit for election, then accept.
+      if [[ $_ -gt 15 ]]; then
+        echo "Port-forward ready via ${PF_TARGET} (leader metric not yet visible)"
+        return 0
+      fi
     fi
     sleep 1
   done
 
-  echo "Failed to establish port-forward to svc/${svc} on localhost:${local_port}" >&2
+  echo "Failed to establish port-forward on localhost:${local_port}" >&2
   cat "$log" >&2 || true
   return 1
 }
@@ -109,27 +150,73 @@ ensure_controller_port_forward() {
     start_controller_port_forward "$ns" "$local_port"
     return $?
   fi
+  # If we are not on the leader, rebind — remediations only exist there.
+  if ! curl -sf "http://127.0.0.1:${local_port}/metrics" 2>/dev/null | grep -q 'self_healing_is_leader 1'; then
+    start_controller_port_forward "$ns" "$local_port"
+    return $?
+  fi
   return 0
 }
 
-# Scrape /metrics with PF auto-restart. Prints body to stdout; never fails the shell.
+# Scrape /metrics from every controller pod via exec (leader + followers).
+# Remediations are recorded only on the Lease holder; Service PF can miss them.
 scrape_controller_metrics() {
   local ns="${1:-self-healing}"
   local local_port="${2:-8080}"
+  local pod metrics=""
+  local pods
+  pods=$(kc get pods -n "$ns" -l app=self-healing-controller -o jsonpath='{.items[*].metadata.name}' 2>/dev/null || true)
+  for pod in $pods; do
+    metrics+=$(kc exec -n "$ns" "$pod" -- python -c \
+      'import urllib.request; print(urllib.request.urlopen("http://127.0.0.1:8080/metrics", timeout=5).read().decode())' \
+      2>/dev/null || true)
+    metrics+=$'\n'
+  done
+  if [[ -n "${metrics//[[:space:]]/}" ]]; then
+    printf '%s' "$metrics"
+    return 0
+  fi
+  # Fallback: port-forward path
   ensure_controller_port_forward "$ns" "$local_port" >/dev/null 2>&1 || true
   curl -sf "http://127.0.0.1:${local_port}/metrics" 2>/dev/null || true
 }
 
+# Logs from all controller replicas (deploy/ picks a random pod and can miss the leader).
 controller_logs() {
   local ns="${1:-self-healing}"
   local tail_lines="${2:-200}"
-  kc logs -n "$ns" deploy/self-healing-controller --all-containers=true --tail="$tail_lines" 2>/dev/null \
-    || kc logs -n "$ns" -l app=self-healing-controller --tail="$tail_lines" 2>/dev/null \
+  kc logs -n "$ns" -l app=self-healing-controller --all-containers=true --prefix=true --tail="$tail_lines" 2>/dev/null \
     || true
 }
 
-# Wait until a predicate function returns 0, re-scraping metrics with bounded timeout.
-# Usage: wait_until_timeout <seconds> <shell function name>
+# Events emitted by brake/refusal paths (API-visible, not scrape-dependent).
+controller_brake_events() {
+  local ns="${1:-test-app}"
+  kc get events -n "$ns" --field-selector reason=RemediationBrakeEngaged \
+    -o custom-columns=LAST:.lastTimestamp,NAME:.involvedObject.name,MSG:.message --no-headers 2>/dev/null \
+    || true
+}
+
+# True when the workload pod is detectable as a crash loop by the controller rules:
+# CrashLoopBackOff waiting reason OR restartCount >= POD_FAILURE_THRESHOLD (default 3).
+workload_is_crashlooping() {
+  local ns="$1"
+  local label="$2"
+  local threshold="${3:-3}"
+  local restarts reason
+  restarts=$(kc get pods -n "$ns" -l "$label" \
+    -o jsonpath='{.items[0].status.containerStatuses[0].restartCount}' 2>/dev/null || true)
+  reason=$(kc get pods -n "$ns" -l "$label" \
+    -o jsonpath='{.items[0].status.containerStatuses[0].state.waiting.reason}' 2>/dev/null || true)
+  if [[ "$reason" == "CrashLoopBackOff" ]]; then
+    return 0
+  fi
+  if [[ -n "${restarts:-}" && "$restarts" -ge "$threshold" ]]; then
+    return 0
+  fi
+  return 1
+}
+
 wait_until_timeout() {
   local timeout_s="$1"
   local predicate="$2"

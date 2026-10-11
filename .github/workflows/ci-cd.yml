@@ -400,12 +400,27 @@ jobs:
           trap 'stop_controller_port_forward' EXIT
 
           echo "Setting DRY_RUN=false with allowlist excluding test-app..."
+          # POD_FAILURE_THRESHOLD=1: controller only enters crash-loop remediation at
+          # CrashLoopBackOff OR restartCount>=threshold; default 3 + kubelet backoff
+          # can exceed a short scrape window even while the pod shows Error.
           kc set env deployment/self-healing-controller -n self-healing \
             DRY_RUN=false \
-            REMEDIATION_NAMESPACES=other-ns
+            REMEDIATION_NAMESPACES=other-ns \
+            POD_FAILURE_THRESHOLD=1
 
           # Wait for the new ReplicaSet to be fully rolled out (no terminating pods).
           wait_controller_rollout self-healing 120
+
+          # Confirm live config on the Deployment before injecting the workload.
+          dry_run=$(kc get deploy self-healing-controller -n self-healing \
+            -o jsonpath='{.spec.template.spec.containers[0].env[?(@.name=="DRY_RUN")].value}')
+          allowlist=$(kc get deploy self-healing-controller -n self-healing \
+            -o jsonpath='{.spec.template.spec.containers[0].env[?(@.name=="REMEDIATION_NAMESPACES")].value}')
+          threshold=$(kc get deploy self-healing-controller -n self-healing \
+            -o jsonpath='{.spec.template.spec.containers[0].env[?(@.name=="POD_FAILURE_THRESHOLD")].value}')
+          test "$dry_run" = "false" || { echo "Expected DRY_RUN=false, got: $dry_run"; exit 1; }
+          test "$allowlist" = "other-ns" || { echo "Expected REMEDIATION_NAMESPACES=other-ns, got: $allowlist"; exit 1; }
+          test "$threshold" = "1" || { echo "Expected POD_FAILURE_THRESHOLD=1, got: $threshold"; exit 1; }
 
           kc apply -f - <<'EOF'
           apiVersion: apps/v1
@@ -441,11 +456,22 @@ jobs:
           test -n "$pod_uid" || { echo "allowlist-neg pod never appeared"; exit 1; }
           echo "Pinned allowlist-neg pod uid=${pod_uid}"
 
-          # Service port-forward (not a fixed pod); scrapes restart PF on loss.
-          start_controller_port_forward self-healing 8087
+          workload_crashloop_ready() {
+            workload_is_crashlooping test-app app=allowlist-neg 1
+          }
 
+          # Do not expect refusal until the workload matches controller detection rules.
+          if ! wait_until_timeout 180 workload_crashloop_ready; then
+            echo "allowlist-neg never reached CrashLoopBackOff/restart threshold"
+            kc get pods -n test-app -l app=allowlist-neg -o yaml || true
+            exit 1
+          fi
+          echo "Workload is crashlooping; waiting for allowlist refusal on the leader"
+
+          # Refusal signals are recorded only on the Lease holder. Scraping the
+          # Service or `logs deploy/` can hit a follower and miss them entirely.
           saw_allowlist_refusal() {
-            local metrics logs
+            local metrics logs events
             metrics=$(scrape_controller_metrics self-healing 8087)
             if echo "$metrics" | grep -E 'remediations_total\{[^}]*result="brake_engaged"'; then
               return 0
@@ -453,23 +479,34 @@ jobs:
             if echo "$metrics" | grep -E 'brake_engaged\{[^}]*reason="namespace_not_allowed"'; then
               return 0
             fi
-            logs=$(controller_logs self-healing 400)
+            logs=$(controller_logs self-healing 500)
+            # Exact controller text: "namespace test-app not in allowlist"
+            # and reason "namespace_not_allowed:test-app"
             if echo "$logs" | grep -E 'namespace_not_allowed|not in allowlist' >/dev/null; then
+              return 0
+            fi
+            events=$(controller_brake_events test-app)
+            if echo "$events" | grep -E 'namespace_not_allowed|allowlist-neg' >/dev/null; then
               return 0
             fi
             return 1
           }
 
-          if ! wait_until_timeout 120 saw_allowlist_refusal; then
-            echo "Expected allowlist refusal (brake metric or refusal log)"
+          if ! wait_until_timeout 180 saw_allowlist_refusal; then
+            echo "Expected allowlist refusal (brake metric, refusal log, or brake event)"
+            echo "=== metrics (all replicas) ==="
             scrape_controller_metrics self-healing 8087 || true
-            controller_logs self-healing 160
+            echo "=== logs (all replicas) ==="
+            controller_logs self-healing 200
+            echo "=== brake events ==="
+            controller_brake_events test-app || true
             kc get pods -n test-app -l app=allowlist-neg -o wide || true
+            kc get lease -n self-healing || true
             exit 1
           fi
 
           metrics=$(scrape_controller_metrics self-healing 8087)
-          logs=$(controller_logs self-healing 400)
+          logs=$(controller_logs self-healing 500)
           if echo "$metrics" | grep -E 'remediations_total\{[^}]*namespace="test-app"[^}]*result="success"'; then
             echo "Pod outside allowlist must not be live-remediated (success metric present)"
             exit 1
