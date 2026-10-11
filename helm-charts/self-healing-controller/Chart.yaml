@@ -3,7 +3,7 @@ name: self-healing-controller
 description: A Helm chart for Self-Healing Infrastructure Controller
 type: application
 version: 0.1.0
-appVersion: "1.1.0"
+appVersion: "2.2.0"
 keywords:
   - kubernetes
   - self-healing
