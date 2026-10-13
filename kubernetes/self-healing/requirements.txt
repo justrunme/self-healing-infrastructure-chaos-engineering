@@ -3,4 +3,4 @@ kubernetes==34.1.0
 requests==2.32.5
 PyYAML==6.0.3
 prometheus-client==0.23.1
-flask==3.1.2 
+flask==3.1.3 
