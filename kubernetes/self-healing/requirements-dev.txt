@@ -4,4 +4,4 @@ pytest-cov==7.1.0
 pytest-mock==3.16.0
 flake8==7.4.1
 black==26.10.1
-isort==7.0.0 
+isort==9.0.2 
