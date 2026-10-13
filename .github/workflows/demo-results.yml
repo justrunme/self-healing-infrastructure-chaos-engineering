@@ -44,7 +44,7 @@ jobs:
           asciinema rec --overwrite -c 'bash scripts/demo_remediation_record.sh' docs/assets/chaos-remediation.cast
           svg-term --in docs/assets/chaos-remediation.cast --out docs/assets/chaos-remediation.svg --window --width 100 --height 20 --no-cursor
           python3 scripts/write_demo_results.py
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: demo-results
           path: |

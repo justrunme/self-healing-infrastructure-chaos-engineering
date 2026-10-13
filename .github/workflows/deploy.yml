@@ -175,7 +175,7 @@ jobs:
           echo "✅ Deployment notification prepared"
 
       - name: 📤 Upload deployment summary
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@v7
         with:
           name: deployment-summary
           path: deployment-summary.md
@@ -343,7 +343,7 @@ jobs:
           echo "✅ Final summary generated"
 
       - name: 📤 Upload final summary
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@v7
         with:
           name: final-summary
           path: final-summary.md
