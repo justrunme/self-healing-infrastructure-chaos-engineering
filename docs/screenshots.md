@@ -3,7 +3,6 @@
 ## Overview
 
 Recorded demo assets for the self-healing remediation path live under `docs/assets/`.
-There is no placeholder image in this repository.
 
 ## Remediation demo
 
