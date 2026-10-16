@@ -148,44 +148,7 @@ My CI/CD pipeline includes **8 comprehensive test stages** that validate every a
 
 ## 📊 Test Results & System Report
 
-After each successful CI/CD run, I generate a comprehensive system report that includes:
-
-```bash
-# System Status Report
-=== Pod Status Across All Namespaces ===
-NAMESPACE         NAME                                    READY   STATUS    RESTARTS   AGE
-kube-system       coredns-787d4945fb-abc12              1/1     Running   0          5m
-kube-system       etcd-minikube                         1/1     Running   0          5m
-kube-system       kube-apiserver-minikube               1/1     Running   0          5m
-kube-system       kube-controller-manager-minikube      1/1     Running   0          5m
-kube-system       kube-proxy-xyz789                     1/1     Running   0          5m
-kube-system       kube-scheduler-minikube               1/1     Running   0          5m
-kube-system       metrics-server-5c6d7f8g9h             1/1     Running   0          4m
-kube-system       storage-provisioner                   1/1     Running   0          5m
-monitoring        prometheus-kube-prometheus-prometheus-0 2/2   Running   0          3m
-monitoring        prometheus-grafana-abc123-def456      2/2     Running   0          3m
-self-healing      self-healing-controller-xyz789-abc12  1/1     Running   0          2m
-test-app          test-app-abc123-def456                1/1     Running   0          2m
-test-app          test-app-abc123-ghi789                1/1     Running   0          2m
-
-=== Self-Healing Controller Logs ===
-2024-01-15 10:30:15 INFO Starting Self-Healing Controller v2.2.0
-2024-01-15 10:30:15 INFO Monitoring namespace: test-app
-2024-01-15 10:30:15 INFO Health check endpoint: /health
-2024-01-15 10:30:15 INFO Metrics endpoint: /metrics
-2024-01-15 10:30:16 INFO Controller ready to monitor pods
-
-=== Recent Cluster Events ===
-LAST SEEN   TYPE      REASON              OBJECT                    MESSAGE
-2m          Normal    Scheduled           pod/test-app-abc123-def456 Successfully assigned test-app/test-app-abc123-def456 to minikube
-2m          Normal    Pulled              pod/test-app-abc123-def456 Container image "nginx:1.21-alpine" already present on machine
-2m          Normal    Created             pod/test-app-abc123-def456 Created container test-app
-2m          Normal    Started             pod/test-app-abc123-def456 Started container test-app
-2m          Normal    Scheduled           pod/test-app-abc123-ghi789 Successfully assigned test-app/test-app-abc123-ghi789 to minikube
-2m          Normal    Pulled              pod/test-app-abc123-ghi789 Container image "nginx:1.21-alpine" already present on machine
-2m          Normal    Created             pod/test-app-abc123-ghi789 Created container test-app
-2m          Normal    Started             pod/test-app-abc123-ghi789 Started container test-app
-```
+CI publishes job logs and artifacts for each green run of [Self-Healing Infrastructure CI/CD](https://github.com/justrunme/self-healing-infrastructure-chaos-engineering/actions/workflows/ci-cd.yml). Measured remediation timings (not estimates) are recorded in [docs/results.md](docs/results.md) / [docs/results.json](docs/results.json); claim status is mapped in [docs/EVIDENCE.md](docs/EVIDENCE.md).
 
 ## 🎯 Practical Applications & Use Cases
 
@@ -198,7 +161,7 @@ This self-healing infrastructure is designed for real-world production environme
 - **24/7 Operations**: Reduce downtime and eliminate manual recovery procedures
 
 ### 🚀 **DevOps & SRE Teams**
-- **Incident Response Automation**: Reduce MTTR (Mean Time To Recovery) from hours to minutes
+- **Incident Response Automation**: Automate common recovery paths so operators spend less time on repetitive pod restarts
 - **Chaos Engineering**: Proactively test system resilience with controlled failures
 - **Capacity Planning**: Automatic scaling based on demand with HPA
 - **Monitoring & Alerting**: Comprehensive observability with Prometheus and Grafana
@@ -222,7 +185,7 @@ This self-healing infrastructure is designed for real-world production environme
 - **Compliance Monitoring**: Automated audit trails and regulatory reporting
 
 ### 🌐 **E-commerce & Retail**
-- **Online Stores**: Ensure 99.9%+ uptime for customer-facing applications
+- **Online Stores**: Keep customer-facing storefronts recovering automatically from pod failures
 - **Inventory Management**: Automatic recovery of inventory tracking systems
 - **Order Processing**: Reliable order fulfillment and payment processing
 - **Customer Analytics**: Continuous data collection and analysis
@@ -244,13 +207,14 @@ This self-healing infrastructure is designed for real-world production environme
 **📖 [Live Documentation](https://justrunme.github.io/self-healing-infrastructure-chaos-engineering/)** - Comprehensive documentation with interactive examples, architecture diagrams, and step-by-step guides.
 
 ### 📋 Documentation Sections
-- **🏗️ Architecture**: System design and component overview
-- **🔄 Self-Healing**: Logic and controller implementation
-- **🎲 Chaos Engineering**: Failure testing and resilience validation
-- **🔄 CI/CD Pipeline**: Automated deployment and testing
-- **📊 Monitoring**: Prometheus and Grafana setup
-- **📸 Screenshots**: Visual guides and dashboards
-- **🔗 Resources**: Useful links and references
+- **[Architecture](docs/architecture/overview.md)**: System design and component overview
+- **[Self-Healing](docs/self-healing/logic.md)**: Logic and controller implementation
+- **[Chaos Engineering](docs/chaos-engineering/overview.md)**: Failure testing and resilience validation
+- **[CI/CD Pipeline](docs/ci-cd/overview.md)**: Automated deployment and testing
+- **[Monitoring](docs/monitoring/prometheus.md)**: Prometheus and Grafana setup
+- **[Screenshots](docs/screenshots.md)**: Visual demo assets
+- **[Evidence](docs/EVIDENCE.md)**: Claim → CI proof mapping
+- **[Resources](docs/links.md)**: Useful links and references
 
 ---
 
@@ -512,53 +476,6 @@ kubectl set env deployment/self-healing-controller -n self-healing \
   REMEDIATION_NAMESPACES=test-app
 ```
 
-## 💼 Business Value & ROI
-
-### 📈 **Quantifiable Benefits**
-
-| Metric | Before | After | Improvement |
-|--------|--------|-------|-------------|
-| **MTTR** | 2-4 hours | 2-5 minutes | **96% reduction** |
-| **Uptime** | 99.0% | 99.9%+ | **0.9% improvement** |
-| **Manual Interventions** | 15-20/day | 0-2/day | **90% reduction** |
-| **Incident Response Time** | 30-60 minutes | 1-2 minutes | **95% reduction** |
-| **Operational Costs** | High | Reduced | **40-60% savings** |
-
-### 🎯 **Real-World Deployment Examples**
-
-#### **E-commerce Platform (10M+ users)**
-```yaml
-# Before: Manual recovery, frequent downtime
-# After: Automated self-healing infrastructure
-Results:
-  - Zero downtime during Black Friday
-  - Automatic scaling from 50 to 500 pods
-  - 99.99% uptime achieved
-  - 95% reduction in incident tickets
-```
-
-#### **Financial Trading System**
-```yaml
-# Critical requirement: Zero downtime
-# Solution: Self-healing with chaos engineering
-Benefits:
-  - Continuous trading operations
-  - Automatic failover in <30 seconds
-  - Proactive failure detection
-  - Regulatory compliance automation
-```
-
-#### **Healthcare Patient Monitoring**
-```yaml
-# Life-critical application requirements
-# Implementation: High-availability self-healing
-Outcomes:
-  - 24/7 patient monitoring
-  - Automatic recovery from hardware failures
-  - Real-time alerting for critical events
-  - HIPAA compliance automation
-```
-
 ## 🏗️ Architecture Overview
 
 ```
@@ -666,15 +583,9 @@ kubectl logs -f deployment/self-healing-controller
 kubectl autoscale deployment/your-app --min=3 --max=10 --cpu-percent=70
 ```
 
-### 📊 **Success Metrics & KPIs**
+### 📊 **Measured results (CI)**
 
-| KPI | Target | Measurement |
-|-----|--------|-------------|
-| **System Uptime** | 99.9%+ | Prometheus metrics |
-| **Recovery Time** | <5 minutes | Self-healing logs |
-| **False Positives** | <1% | Alert analysis |
-| **Resource Utilization** | 70-80% | HPA metrics |
-| **Incident Reduction** | 90%+ | Ticket tracking |
+Do not treat planning phases above as SLOs. Measured remediation timings and brake behavior from CI are in [docs/results.md](docs/results.md) / [docs/results.json](docs/results.json); claim status is mapped in [docs/EVIDENCE.md](docs/EVIDENCE.md).
 
 ## 🔧 Configuration
 
