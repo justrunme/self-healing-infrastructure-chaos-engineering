@@ -7,8 +7,14 @@ runs:
     - name: Install Minikube
       shell: bash
       run: |
-        curl -LO https://storage.googleapis.com/minikube/releases/latest/minikube-linux-amd64
+        set -euo pipefail
+        MINIKUBE_VERSION=v1.39.0
+        # sha256 from https://github.com/kubernetes/minikube/releases/download/${MINIKUBE_VERSION}/minikube-linux-amd64.sha256
+        MINIKUBE_SHA256=b738496da01be06bbaf80c688f57ce25acd3849fbb518155f3a88e03ef555aa4
+        curl -fsSLO "https://github.com/kubernetes/minikube/releases/download/${MINIKUBE_VERSION}/minikube-linux-amd64"
+        echo "${MINIKUBE_SHA256}  minikube-linux-amd64" | sha256sum -c -
         sudo install minikube-linux-amd64 /usr/local/bin/minikube
+        rm -f minikube-linux-amd64
     
     - name: Start Minikube
       shell: bash
@@ -26,4 +32,4 @@ runs:
         echo "KUBECONFIG=$HOME/.kube/config" >> $GITHUB_ENV
         echo "KUBE_CONFIG_PATH=$HOME/.kube/config" >> $GITHUB_ENV
         echo "Current KUBECONFIG: $KUBECONFIG"
-        echo "Current KUBE_CONFIG_PATH: $KUBE_CONFIG_PATH" 
+        echo "Current KUBE_CONFIG_PATH: $KUBE_CONFIG_PATH"
