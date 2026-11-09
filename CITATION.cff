@@ -1,0 +1,9 @@
+cff-version: 1.2.0
+message: If you use this software, please cite it using the metadata from this file.
+type: software
+title: Self-Healing Infrastructure with Chaos Engineering
+authors:
+  - given-names: Andrey
+    family-names: Lesnikov
+    orcid: https://orcid.org/0009-0004-7583-4314
+repository-code: https://github.com/justrunme/self-healing-infrastructure-chaos-engineering
